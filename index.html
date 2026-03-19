@@ -262,7 +262,7 @@ td.bake.neg{color:#d97706;font-weight:600}
         <div class="actions">
           <button class="btn" onclick="resetSOH()">Reset SOH</button>
           <button class="btn" onclick="exportCSV()">Export CSV</button>
-          <button class="btn" onclick="window.print()">Print</button>
+          <button class="btn" onclick="handlePrint()">Print</button>
           <button class="btn" onclick="newImport()">New Import</button>
         </div>
       </div>
@@ -280,7 +280,7 @@ td.bake.neg{color:#d97706;font-weight:600}
           <button class="btn" style="font-size:11px;padding:5px 10px" onclick="saveOrder()">Save</button>
           <button class="btn btn-history" style="font-size:11px;padding:5px 10px" onclick="openHistory()">History</button>
           <button class="btn" style="font-size:11px;padding:5px 10px" onclick="resetSOH();renderMobile()">Reset SOH</button>
-          <button class="btn" style="font-size:11px;padding:5px 10px" onclick="window.print()">Print</button>
+          <button class="btn" style="font-size:11px;padding:5px 10px" onclick="handlePrint()">Print</button>
           <button class="btn" style="font-size:11px;padding:5px 10px" onclick="newImport()">New Import</button>
         </div>
       </div>
@@ -583,6 +583,34 @@ function downloadSnapshotCSV(id){
 }
 
 function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ── Smart print: Web Share API on iOS, window.print() everywhere else ──
+async function handlePrint(){
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+  if(isIOS){
+    // iOS Safari: window.print() works but ONLY when called from a direct
+    // user gesture. We call it directly here — this opens the AirPrint dialog.
+    // If it fails silently, fall back to share sheet.
+    try{
+      window.print();
+    }catch(e){
+      if(navigator.share){
+        try{
+          await navigator.share({
+            title:"Bernardi\u2019s Bakery Production Sheet",
+            url:window.location.href
+          });
+        }catch(se){}
+      } else {
+        showToast('To print: tap the Share button in Safari then choose Print.');
+      }
+    }
+  } else {
+    window.print();
+  }
+}
 
 
 
