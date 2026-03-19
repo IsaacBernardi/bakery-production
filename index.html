@@ -304,35 +304,60 @@ const CLIENT_ID = '7673d3ba-56ca-46f0-a484-9ccbbf994036';
 
 const IS_CONFIGURED = TENANT_ID !== 'YOUR_TENANT_ID' && CLIENT_ID !== 'YOUR_CLIENT_ID';
 let msalInstance = null;
+let msalReady = false;
 
-function initMsal(){
-  if(!IS_CONFIGURED)return;
-  msalInstance = new msal.PublicClientApplication({
-    auth:{clientId:CLIENT_ID,authority:'https://login.microsoftonline.com/'+TENANT_ID,redirectUri:window.location.href.split('?')[0].split('#')[0]},
-    cache:{cacheLocation:'sessionStorage',storeAuthStateInCookie:false}
-  });
-}
-
-async function handleRedirect(){
+async function initMsal(){
   if(!IS_CONFIGURED){
     document.getElementById('loginScreen').style.display='none';
-    document.getElementById('configBanner').style.display='block';
     document.getElementById('appHeader').style.display='flex';
     document.getElementById('appContent').style.display='block';
     document.getElementById('userName').textContent='Dev mode (no auth)';
     return;
   }
-  document.getElementById('configBanner').style.display='none';
   try{
-    const resp=await msalInstance.handleRedirectPromise();
-    const accounts=resp?[resp.account]:msalInstance.getAllAccounts();
-    if(accounts.length>0)showApp(accounts[0]);
-    else document.getElementById('loginScreen').style.display='flex';
-  }catch(e){document.getElementById('loginScreen').style.display='flex';showLoginErr(e.message);}
+    msalInstance = new msal.PublicClientApplication({
+      auth:{
+        clientId:CLIENT_ID,
+        authority:'https://login.microsoftonline.com/'+TENANT_ID,
+        redirectUri:window.location.origin+window.location.pathname
+      },
+      cache:{cacheLocation:'sessionStorage',storeAuthStateInCookie:false}
+    });
+    await msalInstance.initialize();
+    msalReady = true;
+    await handleRedirect();
+  }catch(e){
+    document.getElementById('loginScreen').style.display='flex';
+    showLoginErr('Initialisation error: '+e.message);
+  }
 }
 
-async function signIn(){if(!IS_CONFIGURED)return;try{await msalInstance.loginRedirect({scopes:['User.Read']});}catch(e){showLoginErr(e.message);}}
-function signOut(){if(!IS_CONFIGURED)return;msalInstance.logoutRedirect();}
+async function handleRedirect(){
+  try{
+    const resp = await msalInstance.handleRedirectPromise();
+    if(resp && resp.account){ showApp(resp.account); return; }
+    const accounts = msalInstance.getAllAccounts();
+    if(accounts.length>0){ showApp(accounts[0]); return; }
+    document.getElementById('loginScreen').style.display='flex';
+  }catch(e){
+    document.getElementById('loginScreen').style.display='flex';
+    showLoginErr(e.message);
+  }
+}
+
+async function signIn(){
+  if(!IS_CONFIGURED) return;
+  if(!msalReady){ showLoginErr('Still loading, please try again in a moment.'); return; }
+  try{
+    await msalInstance.loginRedirect({ scopes:['User.Read'] });
+  }catch(e){ showLoginErr(e.message); }
+}
+
+async function signOut(){
+  if(!IS_CONFIGURED || !msalReady) return;
+  try{ await msalInstance.logoutRedirect(); }catch(e){ console.error(e); }
+}
+
 function showApp(account){
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('appHeader').style.display='flex';
@@ -342,7 +367,6 @@ function showApp(account){
 function showLoginErr(msg){const el=document.getElementById('loginErr');el.textContent=msg;el.style.display='block';}
 
 initMsal();
-handleRedirect();
 
 // ══ SPREADSHEET ══════════════════════════════════════
 const DAY_MAP={mon:0,tue:1,wed:2,thu:3,fri:4,sat:5,sun:6};
