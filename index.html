@@ -386,13 +386,17 @@ function switchStore(){
 }
 
 // Auto-login if store was remembered
+const VALID_STORES = ['FORBES','BLAYNEY','BATHURST','WYALONG'];
 window.addEventListener('DOMContentLoaded',function(){
   const saved=localStorage.getItem('bps_store');
-  if(saved){
+  if(saved && VALID_STORES.includes(saved)){
     currentStoreCode=saved;
     const sel=document.getElementById('storeSelect');if(sel)sel.value=saved;
     showApp(saved);
     loadLastOrder(saved);
+  } else {
+    // Clear any invalid stored value (e.g. old 'FORB' code)
+    localStorage.removeItem('bps_store');
   }
   buildDayBar();
 });
