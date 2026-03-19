@@ -306,6 +306,9 @@ const IS_CONFIGURED = TENANT_ID !== 'YOUR_TENANT_ID' && CLIENT_ID !== 'YOUR_CLIE
 let msalInstance = null;
 let msalReady = false;
 
+// jsdelivr exports as msalBrowser, Microsoft CDN exports as msal
+const msalLib = window.msalBrowser || window.msal || null;
+
 async function initMsal(){
   if(!IS_CONFIGURED){
     document.getElementById('loginScreen').style.display='none';
@@ -314,8 +317,13 @@ async function initMsal(){
     document.getElementById('userName').textContent='Dev mode (no auth)';
     return;
   }
+  if(!msalLib){
+    document.getElementById('loginScreen').style.display='flex';
+    showLoginErr('Auth library failed to load — please refresh the page.');
+    return;
+  }
   try{
-    msalInstance = new msal.PublicClientApplication({
+    msalInstance = new msalLib.PublicClientApplication({
       auth:{
         clientId: CLIENT_ID,
         authority: 'https://login.microsoftonline.com/'+TENANT_ID,
@@ -325,8 +333,6 @@ async function initMsal(){
     });
     await msalInstance.initialize();
     msalReady = true;
-
-    // Check if already signed in
     const accounts = msalInstance.getAllAccounts();
     if(accounts.length > 0){
       showApp(accounts[0]);
