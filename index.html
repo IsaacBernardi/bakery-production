@@ -205,9 +205,14 @@ td.bake.zero{color:#bbb;font-weight:400}
     <div class="login-title">Bakery Production Sheet</div>
     <div class="login-sub">Select your store to continue</div>
     <div class="login-field">
-      <label for="storeInput">Store</label>
-      <input type="text" id="storeInput" placeholder="Enter store code e.g. FORB" autocomplete="off" autocapitalize="characters"
-        onkeydown="if(event.key==='Enter')doLogin()">
+      <label for="storeSelect">Store</label>
+      <select id="storeSelect" style="width:100%;padding:10px 12px;font-size:14px;border:1px solid #ddd;border-radius:9px;background:#fff;color:#1a1a1a;font-family:inherit;appearance:none;cursor:pointer">
+        <option value="">— Select your store —</option>
+        <option value="FORBES">Forbes</option>
+        <option value="BLAYNEY">Blayney</option>
+        <option value="BATHURST">Bathurst</option>
+        <option value="WYALONG">Wyalong</option>
+      </select>
     </div>
     <button class="login-btn" onclick="doLogin()" id="loginBtn">Continue</button>
     <div class="login-err" id="loginErr"></div>
@@ -329,8 +334,8 @@ td.bake.zero{color:#bbb;font-weight:400}
 
 <script>
 // ══ CONFIG ══════════════════════════════════════════
-const BLOB_BASE =  + BASE_URL + ;
-const SAS =  + SAS_TOKEN + ;
+const BLOB_BASE = 'https://freshproductionsheets.blob.core.windows.net/bakery-orders';
+const SAS = 'sv=2024-11-04&ss=bfqt&srt=co&sp=rwdlacupiytfx&se=2030-03-19T13:39:50Z&st=2026-03-19T05:24:50Z&spr=https&sig=h%2FyZoaUvMBU5mrGFG8kcInMqsPay2H47EZ0Q5ik89m0%3D';
 const DAY_MAP={mon:0,tue:1,wed:2,thu:3,fri:4,sat:5,sun:6};
 const DAY_LABELS=['MON','TUE','WED','THU','FRI','SAT','SUN'];
 
@@ -353,8 +358,9 @@ function calcBake(order,sohVal,boost){return Math.round(order*(1+boost)-(sohVal!
 
 // ══ STORE LOGIN ══════════════════════════════════════
 function doLogin(){
-  const code=document.getElementById('storeInput').value.trim().toUpperCase();
-  if(!code){document.getElementById('loginErr').textContent='Please enter your store code.';document.getElementById('loginErr').style.display='block';return;}
+  const sel = document.getElementById('storeSelect');
+  const code = sel ? sel.value : '';
+  if(!code){document.getElementById('loginErr').textContent='Please select your store.';document.getElementById('loginErr').style.display='block';return;}
   currentStoreCode=code;
   localStorage.setItem('bps_store',code);
   showApp(code);
@@ -375,7 +381,7 @@ function switchStore(){
   document.getElementById('appContent').style.display='none';
   document.getElementById('mainContent').style.display='none';
   document.getElementById('dropZone').style.display='block';
-  document.getElementById('storeInput').value='';
+  const sel=document.getElementById('storeSelect');if(sel)sel.value='';
   document.getElementById('loginErr').style.display='none';
 }
 
@@ -384,7 +390,7 @@ window.addEventListener('DOMContentLoaded',function(){
   const saved=localStorage.getItem('bps_store');
   if(saved){
     currentStoreCode=saved;
-    document.getElementById('storeInput').value=saved;
+    const sel=document.getElementById('storeSelect');if(sel)sel.value=saved;
     showApp(saved);
     loadLastOrder(saved);
   }
