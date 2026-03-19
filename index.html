@@ -801,7 +801,7 @@ function renderHistoryList(snaps,blobNames,body){
     html+='<button class="hc-btn" onclick="loadHistoryOrder('+idx+')">Load</button>';
     html+='<button class="hc-btn" onclick="printHistoryOrder('+idx+')">Print</button>';
     html+='<button class="hc-btn" onclick="csvHistoryOrder('+idx+')">CSV</button>';
-    html+='<button class="hc-btn danger" onclick="deleteHistoryOrder(\"'+escHtml(blobName)+'\",'+idx+')">Delete</button>';
+    html+='<button class="hc-btn danger" onclick="deleteHistoryOrder('+idx+')">Delete</button>';
     html+='</div></div>';
     html+='<div class="hcard-detail" id="hdetail_'+idx+'">';
     html+=renderSnapTable(snap);
@@ -897,8 +897,10 @@ function csvHistoryOrder(idx){
   a.click();
 }
 
-async function deleteHistoryOrder(blobName,idx){
+async function deleteHistoryOrder(idx){
   if(!confirm('Delete this saved order? This cannot be undone.'))return;
+  const blobName=window._histBlobs&&window._histBlobs[idx];
+  if(!blobName){showToast('Could not find order to delete.');return;}
   await deleteBlob(blobName);
   const card=document.getElementById('hcard_'+idx);
   if(card)card.remove();
