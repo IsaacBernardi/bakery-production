@@ -520,7 +520,7 @@ function parseRows(rows){
   soh=items.map(function(){return Array(7).fill(null);});
   document.getElementById('dropZone').style.display='none';
   document.getElementById('mainContent').style.display='block';
-  document.getElementById('storeBadge').textContent=storeName?'Store: '+storeName:'Production Sheet';
+  const sb=document.getElementById('storeBadge');if(sb)sb.textContent=storeName?'Store: '+storeName:'Production Sheet';
   // Pre-fill save label with today's date
   const today=new Date();
   const d=today.toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
