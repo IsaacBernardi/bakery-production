@@ -8,14 +8,10 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;background:#f5f5f3;color:#1a1a1a}
-
-/* ── Header ── */
-.app-header{background:#1a1a1a;padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;height:56px;gap:12px}
+.app-header{background:#1a1a1a;padding:0 1.5rem;display:flex;align-items:center;height:56px}
 .header-logo{height:38px;display:block}
-
-/* ── App ── */
 #appContent{padding:1.5rem}
-.app{max-width:1400px;margin:0 auto}
+.app{max-width:1200px;margin:0 auto}
 .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:10px}
 .title{font-size:18px;font-weight:600;color:#1a1a1a}
 .subtitle{font-size:12px;color:#888;margin-top:3px}
@@ -30,53 +26,100 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
 .btn-primary{background:#e8f0fc;color:#1a56db;border-color:#b4cdf7}
 .btn-primary:hover{background:#d4e4fb}
 .btn-success{background:#e6f4ea;color:#1e7e34;border-color:#a8d5b0}
-.btn-success:hover{background:#d4edda}
 .btn-history{background:#f3e8ff;color:#6f42c1;border-color:#c9a7eb}
-.btn-history:hover{background:#e9d5ff}
-.boost-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 16px;background:#fff;border-radius:10px;margin-bottom:1rem;border:1px solid #eee}
-.boost-label{font-size:12px;color:#666;font-weight:600;margin-right:4px}
-.boost-day{display:flex;align-items:center;gap:4px}
-.boost-day span{font-size:11px;color:#888}
-.boost-day input{width:56px;padding:4px 6px;font-size:12px;border:1px solid #ddd;border-radius:7px;background:#fff;color:#1a1a1a;text-align:center;font-family:inherit}
-.boost-day input:focus{outline:none;box-shadow:0 0 0 2px #b4cdf7;border-color:#b4cdf7}
-.store-info{display:flex;gap:12px;align-items:center;margin-bottom:1rem;flex-wrap:wrap}
+.error-msg{background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:10px 14px;font-size:12px;color:#856404;margin-bottom:1rem;display:none}
+.toast{position:fixed;bottom:24px;right:24px;background:#1a1a1a;color:#fff;padding:10px 18px;border-radius:10px;font-size:12px;font-weight:500;opacity:0;pointer-events:none;transition:opacity 0.3s;z-index:999}
+.toast.show{opacity:1}
+
+/* ── Toolbar ── */
+.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 0;margin-bottom:0.75rem}
+.toolbar-group{display:flex;gap:6px;align-items:center}
+.toolbar-sep{width:1px;height:24px;background:#ddd;margin:0 4px}
+.boost-pair{display:flex;align-items:center;gap:4px;font-size:12px;color:#888}
+.boost-pair span{font-weight:600;color:#555}
+.boost-pair input{width:52px;padding:4px 6px;font-size:12px;border:1px solid #ddd;border-radius:7px;background:#fff;color:#1a1a1a;text-align:center;font-family:inherit}
+.boost-pair input:focus{outline:none;box-shadow:0 0 0 2px #b4cdf7;border-color:#b4cdf7}
 .store-badge{font-size:13px;font-weight:600;padding:5px 14px;background:#fff;border-radius:8px;color:#1a1a1a;border:1px solid #eee}
 .formula-note{font-size:11px;color:#aaa;padding:4px 10px;background:#fff;border-radius:8px;border:1px solid #eee}
-.actions{display:flex;gap:8px;flex-wrap:wrap}
+.save-row{display:flex;align-items:center;gap:8px;margin-bottom:1rem;flex-wrap:wrap}
+.save-row label{font-size:12px;color:#666;font-weight:500}
+.save-input{padding:5px 10px;font-size:12px;border:1px solid #ddd;border-radius:7px;background:#fff;color:#1a1a1a;font-family:inherit;width:220px}
+.save-input:focus{outline:none;box-shadow:0 0 0 2px #b4cdf7;border-color:#b4cdf7}
+
+/* ── Day selector ── */
+.day-bar{display:flex;gap:4px;align-items:center;background:#fff;border-radius:10px;border:1px solid #eee;padding:8px;margin-bottom:1rem;overflow-x:auto}
+.day-btn{flex:0 0 auto;padding:7px 16px;font-size:13px;font-weight:500;border:1px solid #ddd;border-radius:8px;background:#fff;color:#555;cursor:pointer;font-family:inherit;transition:all 0.15s;white-space:nowrap}
+.day-btn.active{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+.day-btn:hover:not(.active){background:#f5f5f3}
+
+/* ── Table ── */
 .wrap{overflow-x:auto;border:1px solid #e5e5e3;border-radius:12px;background:#fff}
-table{width:100%;border-collapse:collapse;min-width:960px}
-thead th{padding:8px 8px;font-size:11px;font-weight:600;color:#888;background:#fafaf8;white-space:nowrap;border-bottom:1px solid #eee;text-align:center}
+table{width:100%;border-collapse:collapse}
+thead th{padding:9px 10px;font-size:11px;font-weight:600;color:#888;background:#fafaf8;white-space:nowrap;border-bottom:1px solid #eee;text-align:center}
 thead th.left{text-align:left}
-.day-sep{border-left:1px solid #eee}
 tr:hover td{background:#fafaf8}
-td{padding:6px 8px;border-bottom:1px solid #f0f0ee;color:#1a1a1a;vertical-align:middle;text-align:center;white-space:nowrap}
+td{padding:7px 10px;border-bottom:1px solid #f0f0ee;color:#1a1a1a;vertical-align:middle;text-align:center}
 tr:last-child td{border-bottom:none}
 td.left{text-align:left}
 td.desc{text-align:left;min-width:180px;white-space:normal;word-break:break-word}
 td.readonly{color:#aaa}
-td.bake{font-weight:600;color:#1a56db}
+td.bake{font-weight:700;color:#1a56db;font-size:14px}
+td.bake.neg{color:#d97706}
 td.bake.zero{color:#bbb;font-weight:400}
-td.bake.neg{color:#d97706;font-weight:600}
-.soh-input{width:52px;padding:3px 6px;font-size:12px;border:1px solid #ddd;border-radius:7px;background:#fff;color:#1a1a1a;text-align:center;font-family:inherit}
-.soh-input:focus{outline:none;box-shadow:0 0 0 2px #b4cdf7;border-color:#b4cdf7}
-.total-badge{display:inline-block;background:#e8f0fc;color:#1a56db;border-radius:7px;padding:2px 10px;font-size:12px;font-weight:600}
+.soh-input{width:58px;padding:5px 6px;font-size:13px;border:1.5px solid #ddd;border-radius:7px;background:#fff;color:#1a1a1a;text-align:center;font-family:inherit}
+.soh-input:focus{outline:none;box-shadow:0 0 0 2px #b4cdf7;border-color:#1a56db}
 .grp-row td{background:#fafaf8;font-weight:600;font-size:11px;color:#888;text-align:left;padding:5px 10px;border-bottom:1px solid #eee;letter-spacing:0.04em;text-transform:uppercase}
-.error-msg{background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:10px 14px;font-size:12px;color:#856404;margin-bottom:1rem;display:none}
-.toast{position:fixed;bottom:24px;right:24px;background:#1a1a1a;color:#fff;padding:10px 18px;border-radius:10px;font-size:12px;font-weight:500;opacity:0;pointer-events:none;transition:opacity 0.3s;z-index:999}
-.toast.show{opacity:1}
-.save-label-row{display:flex;align-items:center;gap:8px;margin-bottom:1rem;flex-wrap:wrap}
-.save-label-row label{font-size:12px;color:#666;font-weight:500}
-.save-label-input{padding:5px 10px;font-size:12px;border:1px solid #ddd;border-radius:7px;background:#fff;color:#1a1a1a;font-family:inherit;width:220px}
-.save-label-input:focus{outline:none;box-shadow:0 0 0 2px #b4cdf7;border-color:#b4cdf7}
+
+/* ── Mobile (≤768px) ── */
+@media(max-width:768px){
+  #appContent{padding:0.75rem}
+  .toolbar{display:none}
+  .save-row{display:none}
+  .wrap{display:none!important}
+  .mob-toolbar{display:flex!important}
+  .mob-boost{display:flex!important}
+  #mobileList{display:flex!important}
+  .import-zone{padding:1.5rem 1rem}
+  .import-zone .hint,.file-types{display:none}
+  .title{font-size:16px}
+  .subtitle{display:none}
+  .app-header{height:50px;padding:0 1rem}
+  .header-logo{height:34px}
+  .toast{bottom:12px;right:12px;left:12px;text-align:center}
+  .day-bar{margin-bottom:0.75rem}
+}
+
+/* Mobile toolbar */
+.mob-toolbar{display:none;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:0.75rem}
+.mob-boost{display:none;align-items:center;gap:6px;background:#fff;border-radius:10px;border:1px solid #eee;padding:8px 12px;margin-bottom:0.75rem;font-size:12px;flex-wrap:wrap}
+.mob-boost label{font-weight:600;color:#555}
+.mob-boost input{width:52px;padding:4px 6px;font-size:12px;border:1px solid #ddd;border-radius:7px;text-align:center;font-family:inherit}
+
+/* Mobile card list */
+#mobileList{display:none;flex-direction:column;gap:0;border:1px solid #e5e5e3;border-radius:12px;overflow:hidden;background:#fff}
+.mob-group{background:#f5f5f3;padding:7px 14px;font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:0.05em;border-bottom:1px solid #e5e5e3}
+.mob-row{display:flex;align-items:flex-start;background:#fff;border-bottom:1px solid #f0f0ee;padding:11px 14px;gap:12px}
+.mob-row:last-child{border-bottom:none}
+.mob-info{flex:1;min-width:0}
+.mob-item-no{font-size:10px;color:#bbb;margin-bottom:2px}
+.mob-desc{font-size:14px;font-weight:500;color:#1a1a1a;white-space:normal;word-break:break-word;line-height:1.3}
+.mob-cells{display:flex;gap:8px;align-items:flex-start;flex-shrink:0;padding-top:2px}
+.mob-cell{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:48px}
+.mob-cell-label{font-size:9px;color:#aaa;font-weight:700;text-transform:uppercase}
+.mob-cell-val{font-size:15px;font-weight:500;color:#888}
+.mob-bake{font-size:15px;font-weight:700;color:#1a56db}
+.mob-bake.neg{color:#d97706}
+.mob-bake.zero{color:#bbb;font-weight:400}
+.mob-soh{width:58px;padding:6px 4px;font-size:15px;border:1.5px solid #ddd;border-radius:8px;background:#fff;color:#1a1a1a;text-align:center;font-family:inherit;-webkit-appearance:none}
+.mob-soh:focus{outline:none;border-color:#1a56db;box-shadow:0 0 0 3px rgba(26,86,219,0.12)}
 
 /* ── Modal ── */
 .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:100;display:none;align-items:flex-start;justify-content:center;padding:2rem 1rem;overflow-y:auto}
 .modal-backdrop.open{display:flex}
 .modal{background:#fff;border-radius:16px;width:100%;max-width:900px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.18);margin:auto}
 .modal-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #eee;background:#fafaf8}
-.modal-title{font-size:15px;font-weight:600;color:#1a1a1a}
-.modal-close{background:transparent;border:none;font-size:20px;cursor:pointer;color:#888;line-height:1;padding:0 4px}
-.modal-close:hover{color:#1a1a1a}
+.modal-title{font-size:15px;font-weight:600}
+.modal-close{background:transparent;border:none;font-size:20px;cursor:pointer;color:#888;padding:0 4px}
 .modal-body{padding:20px;max-height:70vh;overflow-y:auto}
 .history-empty{text-align:center;padding:2rem;color:#aaa;font-size:13px}
 .history-list{display:flex;flex-direction:column;gap:10px}
@@ -84,104 +127,47 @@ td.bake.neg{color:#d97706;font-weight:600}
 .history-card-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#fafaf8;cursor:pointer;gap:12px}
 .history-card-header:hover{background:#f0f0ee}
 .hc-left{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.hc-date{font-size:13px;font-weight:600;color:#1a1a1a}
+.hc-date{font-size:13px;font-weight:600}
 .hc-store{font-size:11px;color:#888;padding:2px 8px;background:#fff;border:1px solid #eee;border-radius:20px}
 .hc-items{font-size:11px;color:#aaa}
 .hc-actions{display:flex;gap:6px}
-.hc-btn{font-size:11px;padding:4px 10px;border:1px solid #ddd;border-radius:6px;background:#fff;color:#1a1a1a;cursor:pointer;font-family:inherit}
-.hc-btn:hover{background:#f5f5f3}
+.hc-btn{font-size:11px;padding:4px 10px;border:1px solid #ddd;border-radius:6px;background:#fff;cursor:pointer;font-family:inherit}
 .hc-btn.danger{color:#c0392b;border-color:#f5c6cb}
-.hc-btn.danger:hover{background:#fff5f5}
 .history-detail{display:none;padding:12px 14px;border-top:1px solid #f0f0ee;overflow-x:auto}
 .history-detail.open{display:block}
-.history-detail table{min-width:600px;font-size:11px;border-collapse:collapse;width:100%}
-.history-detail th{padding:5px 8px;background:#f5f5f5;font-weight:600;color:#555;border:1px solid #eee;text-align:center;white-space:nowrap}
+.history-detail table{min-width:500px;font-size:11px;border-collapse:collapse;width:100%}
+.history-detail th{padding:5px 8px;background:#f5f5f5;font-weight:600;color:#555;border:1px solid #eee;text-align:center}
 .history-detail th.left{text-align:left}
-.history-detail td{padding:4px 8px;border:1px solid #f0f0ee;text-align:center;color:#1a1a1a}
+.history-detail td{padding:4px 8px;border:1px solid #f0f0ee;text-align:center}
 .history-detail td.left{text-align:left;color:#555}
 .history-detail .bake-val{font-weight:600;color:#1a56db}
 .history-detail .grp{background:#fafaf8;font-weight:600;font-size:10px;color:#888;text-transform:uppercase}
 
-/* ══════════════════════════════════════
-   MOBILE VIEW  (≤ 768px)
-══════════════════════════════════════ */
-/* Day selector — shown on ALL screen sizes */
-.day-selector{display:flex;gap:4px;background:#fff;border-radius:10px;border:1px solid #eee;padding:8px;margin-bottom:1rem;overflow-x:auto;flex-wrap:nowrap}
-.day-btn{flex:0 0 auto;padding:8px 16px;font-size:13px;font-weight:500;border:1px solid #ddd;border-radius:8px;background:#fff;color:#666;cursor:pointer;font-family:inherit;transition:all 0.15s;white-space:nowrap}
-.day-btn.active{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
-.day-selector-label{font-size:12px;font-weight:600;color:#888;padding:8px 4px 8px 4px;white-space:nowrap;align-self:center}
-
-/* Mobile card list */
-#mobileList{display:none;flex-direction:column;gap:0}
-.mob-group{background:#f5f5f3;padding:8px 12px 4px;font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:0.05em;border-top:1px solid #e5e5e3;margin-top:4px}
-.mob-group:first-child{margin-top:0}
-.mob-row{display:flex;align-items:flex-start;background:#fff;border-bottom:1px solid #f0f0ee;padding:10px 12px;gap:10px}
-.mob-row:last-child{border-bottom:none}
-.mob-info{flex:1;min-width:0}
-.mob-item-no{font-size:10px;color:#aaa;margin-bottom:1px}
-.mob-desc{font-size:13px;font-weight:500;color:#1a1a1a;white-space:normal;word-break:break-word;line-height:1.3}
-.mob-cells{display:flex;gap:6px;align-items:center;flex-shrink:0;padding-top:2px}
-.mob-cell{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:44px}
-.mob-cell-label{font-size:9px;color:#aaa;font-weight:600;text-transform:uppercase}
-.mob-cell-val{font-size:14px;font-weight:500;color:#888}
-.mob-cell-bake{font-size:14px;font-weight:700;color:#1a56db}
-.mob-cell-bake.neg{color:#d97706}
-.mob-cell-bake.zero{color:#bbb;font-weight:400}
-.mob-soh{width:56px;padding:6px 4px;font-size:15px;border:1.5px solid #ddd;border-radius:8px;background:#fff;color:#1a1a1a;text-align:center;font-family:inherit;-webkit-appearance:none}
-.mob-soh:focus{outline:none;border-color:#1a56db;box-shadow:0 0 0 3px rgba(26,86,219,0.12)}
-
-/* Mobile boost + actions bar */
-.mob-boost-row{display:none;align-items:center;gap:8px;background:#fff;border-radius:10px;border:1px solid #eee;padding:10px 12px;margin-bottom:1rem;flex-wrap:wrap}
-.mob-boost-label{font-size:11px;font-weight:600;color:#666}
-.mob-boost-val{display:flex;align-items:center;gap:4px;font-size:12px;color:#888}
-.mob-boost-val input{width:52px;padding:4px 6px;font-size:12px;border:1px solid #ddd;border-radius:7px;text-align:center;font-family:inherit}
-.mob-store-bar{display:none;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px}
-
-@media(max-width:768px){
-  #appContent{padding:0.75rem}
-  .boost-bar,.wrap,.save-label-row{display:none!important}
-  .store-info{display:none!important}
-  .top .actions{display:none!important}
-  #mobileList{display:flex}
-  .mob-boost-row{display:flex}
-  .mob-store-bar{display:flex}
-  .import-zone{padding:1.5rem 1rem}
-  .import-zone .hint,.file-types{display:none}
-  .import-zone p{font-size:15px}
-  .title{font-size:16px}
-  .subtitle{display:none}
-  .app-header{height:50px;padding:0 1rem}
-  .header-logo{height:34px}
-  .toast{bottom:16px;right:12px;left:12px;text-align:center}
-}
-
-/* ── Print area — single day, always fresh from JS ── */
+/* ── Print area ── */
 #printArea{display:none}
 @media print{
+  .app-header{background:#1a1a1a!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;height:auto;padding:5px 10px;margin-bottom:5px}
+  .header-logo{height:28px}
+  #appContent{display:none!important}
+  .toast,.modal-backdrop{display:none!important}
+  @page{size:A4 landscape;margin:8mm}
+  body{background:#fff}
   #printArea{display:block}
-  #printArea .print-day-title{font-size:13px;font-weight:700;margin-bottom:6px;color:#1a1a1a}
+  #printArea .ptitle{font-size:13px;font-weight:700;margin-bottom:8px;color:#1a1a1a}
+  #printArea .psub{font-size:9px;color:#888;margin-left:10px;font-weight:400}
   #printArea table{width:100%;border-collapse:collapse;table-layout:fixed}
-  #printArea th{font-size:7px;font-weight:700;padding:3px 2px;background:#f0f0f0!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;white-space:normal;word-break:break-word;text-align:center;vertical-align:bottom;border:0.5px solid #ccc;line-height:1.2}
+  #printArea th{font-size:8px;font-weight:700;padding:4px 3px;background:#f0f0f0!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;text-align:center;border:0.5px solid #ccc;white-space:normal;word-break:break-word;vertical-align:bottom}
   #printArea th.left{text-align:left}
-  #printArea th:nth-child(1){width:12%}
-  #printArea th:nth-child(2){width:38%}
+  #printArea th:nth-child(1){width:10%}
+  #printArea th:nth-child(2){width:40%}
   #printArea th:nth-child(3){width:14%}
   #printArea th:nth-child(4),#printArea th:nth-child(5),#printArea th:nth-child(6){width:12%}
-  #printArea td{padding:3px 4px;font-size:10px;text-align:center;vertical-align:middle;border:0.5px solid #ddd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #printArea td{padding:3px 4px;font-size:10px;border:0.5px solid #ddd;text-align:center;vertical-align:middle}
   #printArea td.left{text-align:left;white-space:normal;word-break:break-word}
-  #printArea td.bake-p{font-weight:700;color:#1a56db}
-  #printArea td.bake-neg{color:#d97706;font-weight:700}
-  #printArea td.bake-zero{color:#bbb}
-  #printArea td.soh-p{font-size:10px}
-  #printArea .grp-p td{background:#e8e8e8!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-size:8px;font-weight:700;color:#444;text-transform:uppercase;letter-spacing:0.03em}
-}
-@media print{
-  .app-header{background:#1a1a1a!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;height:auto;padding:4px 8px;margin-bottom:4px}
-  .header-logo{height:30px}
-  #appContent{display:none!important}
-  @page{size:A4 landscape;margin:6mm}
-  body{background:#fff}
-  .toast,.modal-backdrop{display:none!important}
+  #printArea .p-bake{font-weight:700;color:#1a56db;font-size:11px}
+  #printArea .p-neg{color:#d97706;font-weight:700}
+  #printArea .p-zero{color:#bbb}
+  #printArea .p-grp td{background:#e8e8e8!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-size:8px;font-weight:700;color:#444;text-transform:uppercase}
 }
 </style>
 </head>
@@ -192,7 +178,6 @@ td.bake.neg{color:#d97706;font-weight:600}
 </div>
 
 <div id="printArea"></div>
-
 <div class="toast" id="toast"></div>
 
 <div class="modal-backdrop" id="historyModal">
@@ -211,9 +196,9 @@ td.bake.neg{color:#d97706;font-weight:600}
     <div class="top">
       <div>
         <div class="title">Bakery Production Sheet</div>
-        <div class="subtitle">Import order file &#8594; enter SOH &#8594; BAKE calculates automatically</div>
+        <div class="subtitle">Import order file &#8594; select day &#8594; enter SOH</div>
       </div>
-      <div class="actions">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">Import Order File</button>
         <input type="file" id="fileInput" accept=".txt,.csv,.tsv,.xlsx,.xls" style="display:none" onchange="handleFile(this)">
       </div>
@@ -226,88 +211,71 @@ td.bake.neg{color:#d97706;font-weight:600}
       ondragover="ev(event);this.classList.add('drag')"
       ondragleave="this.classList.remove('drag')"
       ondrop="handleDrop(event)">
-      <p>Tap to import your order file</p>
-      <div class="hint">Columns expected: Store No, DayofWeek, Item No, Vendor Item No, Description, Vendor No, Order, ERB Special Group, Comment</div>
+      <p>Tap or click to import your order file</p>
+      <div class="hint">Columns: Store No, DayofWeek, Item No, Vendor Item No, Description, Vendor No, Order, ERB Special Group, Comment</div>
       <div class="file-types">
         <span class="file-pill">Excel .xlsx</span>
         <span class="file-pill">Excel .xls</span>
-        <span class="file-pill">CSV .csv</span>
-        <span class="file-pill">Tab-separated .tsv</span>
-        <span class="file-pill">Tab-separated .txt</span>
+        <span class="file-pill">CSV</span>
+        <span class="file-pill">TSV / TXT</span>
       </div>
     </div>
 
     <div id="mainContent" style="display:none">
 
-      <!-- DESKTOP: boost + store info bar -->
-      <div class="boost-bar">
-        <span class="boost-label">BOOST %</span>
-        <div class="boost-day"><span>MON</span><input type="number" id="b0" value="0" step="1" oninput="recalcAll()">%</div>
-        <div class="boost-day"><span>TUE</span><input type="number" id="b1" value="0" step="1" oninput="recalcAll()">%</div>
-        <div class="boost-day"><span>WED</span><input type="number" id="b2" value="0" step="1" oninput="recalcAll()">%</div>
-        <div class="boost-day"><span>THU</span><input type="number" id="b3" value="0" step="1" oninput="recalcAll()">%</div>
-        <div class="boost-day"><span>FRI</span><input type="number" id="b4" value="0" step="1" oninput="recalcAll()">%</div>
-        <div class="boost-day"><span>SAT</span><input type="number" id="b5" value="0" step="1" oninput="recalcAll()">%</div>
-        <div class="boost-day"><span>SUN</span><input type="number" id="b6" value="0" step="1" oninput="recalcAll()">%</div>
-      </div>
-      <div class="store-info">
+      <!-- Desktop toolbar -->
+      <div class="toolbar">
         <span class="store-badge" id="storeBadge"></span>
-        <span class="formula-note">BAKE = (ORDER &times; (1 + BOOST%)) &minus; SOH</span>
-        <div class="actions">
-          <button class="btn" onclick="resetSOH()">Reset SOH</button>
-          <button class="btn" onclick="exportCSV()">Export CSV</button>
-          <button class="btn" onclick="handlePrint()">Print</button>
-          <button class="btn" onclick="newImport()">New Import</button>
-        </div>
+        <span class="formula-note">BAKE = (ORDER &times; (1+BOOST%)) &minus; SOH</span>
+        <div class="toolbar-sep"></div>
+        <span style="font-size:12px;color:#666;font-weight:600">BOOST:</span>
+        <div class="boost-pair"><span id="boostDayLabel">MON</span><input type="number" id="boostInput" value="0" step="1" oninput="syncBoost()">%</div>
+        <div class="toolbar-sep"></div>
+        <button class="btn" onclick="resetSOH()">Reset SOH</button>
+        <button class="btn" onclick="exportCSV()">Export CSV</button>
+        <button class="btn" onclick="handlePrint()">Print</button>
+        <button class="btn" onclick="doNewImport()">New Import</button>
       </div>
-      <div class="save-label-row">
+
+      <div class="save-row">
         <label for="orderLabel">Save this order:</label>
-        <input type="text" id="orderLabel" class="save-label-input" placeholder="e.g. Week 12 — Mon 17 Mar">
+        <input type="text" id="orderLabel" class="save-input" placeholder="e.g. Week 12 — Mon 17 Mar">
         <button class="btn btn-success" onclick="saveOrder()">Save Order</button>
         <button class="btn btn-history" onclick="openHistory()">View History</button>
       </div>
 
-      <!-- MOBILE: store bar + boost + day selector -->
-      <div class="mob-store-bar">
+      <!-- Mobile toolbar -->
+      <div class="mob-toolbar">
         <span class="store-badge" id="mobStoreBadge"></span>
-        <div style="display:flex;gap:6px;flex-wrap:wrap">
-          <button class="btn" style="font-size:11px;padding:5px 10px" onclick="saveOrder()">Save</button>
-          <button class="btn btn-history" style="font-size:11px;padding:5px 10px" onclick="openHistory()">History</button>
-          <button class="btn" style="font-size:11px;padding:5px 10px" onclick="resetSOH();renderMobile()">Reset SOH</button>
-          <button class="btn" style="font-size:11px;padding:5px 10px" onclick="handlePrint()">Print</button>
-          <button class="btn" style="font-size:11px;padding:5px 10px" onclick="newImport()">New Import</button>
-        </div>
+        <button class="btn" style="font-size:11px;padding:5px 10px" onclick="saveOrder()">Save</button>
+        <button class="btn btn-history" style="font-size:11px;padding:5px 10px" onclick="openHistory()">History</button>
+        <button class="btn" style="font-size:11px;padding:5px 10px" onclick="handlePrint()">Print</button>
+        <button class="btn" style="font-size:11px;padding:5px 10px" onclick="resetSOH()">Reset</button>
+        <button class="btn" style="font-size:11px;padding:5px 10px" onclick="doNewImport()">New Import</button>
       </div>
-      <div class="mob-boost-row">
-        <span class="mob-boost-label">BOOST %</span>
-        <div class="mob-boost-val"><span id="mobDayLabel" style="font-weight:600;color:#1a1a1a;min-width:36px"></span><input type="number" id="mobBoost" value="0" step="1" oninput="syncMobBoost()" style="width:52px">%</div>
-        <span style="font-size:10px;color:#bbb;margin-left:4px">for selected day</span>
+      <div class="mob-boost" id="mobBoostBar">
+        <label>BOOST <span id="mobBoostLabel" style="color:#1a1a1a"></span>:</label>
+        <input type="number" id="mobBoostInput" value="0" step="1" oninput="syncMobBoost()">
+        <span style="color:#888">%</span>
       </div>
-      <div class="day-selector" id="daySelector"></div>
 
-      <!-- DESKTOP table -->
-      <div class="wrap" id="desktopTable">
-        <table>
-          <thead>
-            <tr>
-              <th class="left">Item No</th>
-              <th class="left">Description</th>
-              <th>Group</th>
-              <th class="day-sep">MON SOH</th><th>MON ORDER</th><th>MON BAKE</th>
-              <th class="day-sep">TUE SOH</th><th>TUE ORDER</th><th>TUE BAKE</th>
-              <th class="day-sep">WED SOH</th><th>WED ORDER</th><th>WED BAKE</th>
-              <th class="day-sep">THU SOH</th><th>THU ORDER</th><th>THU BAKE</th>
-              <th class="day-sep">FRI SOH</th><th>FRI ORDER</th><th>FRI BAKE</th>
-              <th class="day-sep">SAT SOH</th><th>SAT ORDER</th><th>SAT BAKE</th>
-              <th class="day-sep">SUN SOH</th><th>SUN ORDER</th><th>SUN BAKE</th>
-              <th class="day-sep">Wkly Total</th>
-            </tr>
-          </thead>
+      <!-- Day selector — ALL devices -->
+      <div class="day-bar" id="dayBar"></div>
+
+      <!-- Desktop table (single day) -->
+      <div class="wrap">
+        <table id="desktopTable">
+          <thead><tr id="desktopHead">
+            <th class="left">Item No</th>
+            <th class="left">Description</th>
+            <th>Group</th>
+            <th>SOH</th><th>Order</th><th>BAKE</th>
+          </tr></thead>
           <tbody id="tbody"></tbody>
         </table>
       </div>
 
-      <!-- MOBILE card list -->
+      <!-- Mobile list -->
       <div id="mobileList"></div>
 
     </div>
@@ -315,13 +283,31 @@ td.bake.neg{color:#d97706;font-weight:600}
 </div>
 
 <script>
-// ══ SPREADSHEET ══════════════════════════════════════
 const DAY_MAP={mon:0,tue:1,wed:2,thu:3,fri:4,sat:5,sun:6};
 const DAY_LABELS=['MON','TUE','WED','THU','FRI','SAT','SUN'];
 let items=[],soh=[],storeName='';
+let activeDayIndex=0;
+
+function isMobile(){return window.innerWidth<=768;}
+function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function getBoost(di){return (parseFloat(document.getElementById('boostInput')?.value||0)||0)/100;}
+function calcBake(order,sohVal,boost){return Math.round(order*(1+boost)-(sohVal!==null?sohVal:0));}
+function showError(msg){const el=document.getElementById('errorMsg');el.textContent=msg;el.style.display=msg?'block':'none';}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},3000);}
+
+// Hidden boost inputs for each day (used by exportCSV/save)
+(function(){
+  const c=document.createElement('div');c.style.display='none';
+  DAY_LABELS.forEach(function(_,i){
+    const inp=document.createElement('input');inp.type='number';inp.id='b'+i;inp.value='0';
+    c.appendChild(inp);
+  });
+  document.body.appendChild(c);
+})();
 
 function ev(e){e.preventDefault();e.stopPropagation();}
-function showError(msg){const el=document.getElementById('errorMsg');el.textContent=msg;el.style.display=msg?'block':'none';}
+
 function handleDrop(e){ev(e);document.getElementById('dropZone').classList.remove('drag');const f=e.dataTransfer.files[0];if(f)readFile(f);}
 function handleFile(inp){if(inp.files[0])readFile(inp.files[0]);}
 
@@ -380,74 +366,265 @@ function parseRows(rows){
   renderTable();
 }
 
-function getBoosts(){return DAY_LABELS.map(function(_,i){return (parseFloat(document.getElementById('b'+i).value)||0)/100;});}
-function calcBake(order,sohVal,boost){return Math.round(order*(1+boost)-(sohVal!==null?sohVal:0));}
 
-function renderTable(){
-  const boosts=getBoosts();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ── Day selector ────────────────────────────────────
+function buildDayBar(){
+  const bar=document.getElementById('dayBar');
+  bar.innerHTML='';
+  DAY_LABELS.forEach(function(d,di){
+    const btn=document.createElement('button');
+    btn.className='day-btn'+(di===activeDayIndex?' active':'');
+    btn.textContent=d;
+    btn.onclick=function(){activeDayIndex=di;buildDayBar();renderView();syncBoostDisplay();};
+    bar.appendChild(btn);
+  });
+}
+
+function syncBoostDisplay(){
+  // Sync the visible boost input to the active day
+  const val=Math.round((parseFloat(document.getElementById('b'+activeDayIndex)?.value||0)));
+  const inp=document.getElementById('boostInput');
+  const lbl=document.getElementById('boostDayLabel');
+  const minp=document.getElementById('mobBoostInput');
+  const mlbl=document.getElementById('mobBoostLabel');
+  if(inp)inp.value=val;
+  if(lbl)lbl.textContent=DAY_LABELS[activeDayIndex];
+  if(minp)minp.value=val;
+  if(mlbl)mlbl.textContent=DAY_LABELS[activeDayIndex];
+}
+
+function syncBoost(){
+  // Desktop boost changed — update hidden day input
+  const val=parseFloat(document.getElementById('boostInput')?.value)||0;
+  const inp=document.getElementById('b'+activeDayIndex);
+  if(inp)inp.value=val;
+  renderView();
+}
+
+function syncMobBoost(){
+  const val=parseFloat(document.getElementById('mobBoostInput')?.value)||0;
+  const inp=document.getElementById('b'+activeDayIndex);
+  if(inp)inp.value=val;
+  const di=document.getElementById('boostInput');
+  if(di)di.value=val;
+  renderView();
+}
+
+// ── Render (single day, both desktop table + mobile list) ───
+function renderView(){
+  if(!items.length)return;
+  const di=activeDayIndex;
+  const boost=(parseFloat(document.getElementById('b'+di)?.value)||0)/100;
   const groups=[...new Set(items.map(function(i){return i.group;}))];
-  let html='';
+
+  // Update desktop header
+  const head=document.getElementById('desktopHead');
+  if(head){
+    head.innerHTML=
+      '<th class="left">Item No</th>'+
+      '<th class="left">Description</th>'+
+      '<th>Group</th>'+
+      '<th>'+DAY_LABELS[di]+' SOH</th>'+
+      '<th>'+DAY_LABELS[di]+' ORDER</th>'+
+      '<th>'+DAY_LABELS[di]+' BAKE</th>';
+  }
+
+  // Desktop tbody
+  let dhtml='';
   groups.forEach(function(g){
-    const gi=items.map(function(it,ri){return {it:it,ri:ri};}).filter(function(x){return x.it.group===g;});
-    if(g)html+='<tr class="grp-row"><td colspan="25">'+g+'</td></tr>';
-    gi.forEach(function(x){
-      const it=x.it,ri=x.ri;
-      const weekly=DAY_LABELS.reduce(function(s,_,di){return s+Math.max(0,calcBake(it.orders[di],soh[ri][di],boosts[di]));},0);
-      html+='<tr><td class="left readonly" style="font-size:11px">'+it.itemNo+'</td>';
-      html+='<td class="desc" title="'+it.desc+'">'+it.desc+'</td>';
-      html+='<td class="readonly" style="font-size:11px">'+(it.group||'—')+'</td>';
-      DAY_LABELS.forEach(function(_,di){
-        const bake=calcBake(it.orders[di],soh[ri][di],boosts[di]);
-        const cls=bake<0?'bake neg':bake===0?'bake zero':'bake';
-        html+='<td class="day-sep"><input class="soh-input" type="number" id="soh_'+ri+'_'+di+'" placeholder="—" min="0" oninput="updateSOH('+ri+','+di+',this.value)" onkeydown="navSOH(event,'+ri+','+di+')"></td>';
-        html+='<td class="readonly">'+(it.orders[di]||'—')+'</td>';
-        html+='<td class="'+cls+'" id="bake_'+ri+'_'+di+'">'+bake+'</td>';
-      });
-      html+='<td class="day-sep"><span class="total-badge" id="weekly_'+ri+'">'+weekly+'</span></td></tr>';
+    const gi=items.map(function(it,ri){return{it,ri};}).filter(function(x){return x.it.group===g;});
+    if(g)dhtml+='<tr class="grp-row"><td colspan="6">'+escHtml(g)+'</td></tr>';
+    gi.forEach(function({it,ri}){
+      const bake=calcBake(it.orders[di],soh[ri][di],boost);
+      const bcls=bake<0?'bake neg':bake===0?'bake zero':'bake';
+      dhtml+='<tr>';
+      dhtml+='<td class="left readonly" style="font-size:11px">'+escHtml(it.itemNo)+'</td>';
+      dhtml+='<td class="desc">'+escHtml(it.desc)+'</td>';
+      dhtml+='<td class="readonly" style="font-size:11px">'+escHtml(it.group||'—')+'</td>';
+      dhtml+='<td><input class="soh-input" type="number" inputmode="numeric" id="soh_'+ri+'_'+di+'" placeholder="—" min="0" oninput="deskSOH('+ri+','+di+',this.value)" onkeydown="deskNav(event,'+ri+','+di+')"></td>';
+      dhtml+='<td class="readonly">'+( it.orders[di]||'—')+'</td>';
+      dhtml+='<td class="'+bcls+'" id="bake_'+ri+'_'+di+'">'+bake+'</td>';
+      dhtml+='</tr>';
     });
   });
-  document.getElementById('tbody').innerHTML=html;
+  const tbody=document.getElementById('tbody');
+  if(tbody)tbody.innerHTML=dhtml;
+
+  // Re-fill SOH values already entered
+  items.forEach(function(_,ri){
+    const el=document.getElementById('soh_'+ri+'_'+di);
+    if(el&&soh[ri][di]!==null)el.value=soh[ri][di];
+  });
+
+  // Mobile list
+  let mhtml='';
+  groups.forEach(function(g){
+    const gi=items.map(function(it,ri){return{it,ri};}).filter(function(x){return x.it.group===g;});
+    if(g)mhtml+='<div class="mob-group">'+escHtml(g)+'</div>';
+    gi.forEach(function({it,ri}){
+      const order=it.orders[di]||0;
+      const bake=calcBake(order,soh[ri][di],boost);
+      const bc=bake<0?'mob-bake neg':bake===0?'mob-bake zero':'mob-bake';
+      const sv=soh[ri][di]!==null?soh[ri][di]:'';
+      mhtml+='<div class="mob-row">';
+      mhtml+='<div class="mob-info"><div class="mob-item-no">'+escHtml(it.itemNo)+'</div>';
+      mhtml+='<div class="mob-desc">'+escHtml(it.desc)+'</div></div>';
+      mhtml+='<div class="mob-cells">';
+      mhtml+='<div class="mob-cell"><div class="mob-cell-label">SOH</div><input class="mob-soh" type="number" inputmode="numeric" pattern="[0-9]*" value="'+sv+'" placeholder="—" min="0" oninput="mobSOH('+ri+','+di+',this.value)" onkeydown="mobNav(event,'+ri+','+di+')"></div>';
+      mhtml+='<div class="mob-cell"><div class="mob-cell-label">ORDER</div><div class="mob-cell-val">'+( order||'—')+'</div></div>';
+      mhtml+='<div class="mob-cell"><div class="mob-cell-label">BAKE</div><div class="'+bc+'" id="mbake_'+ri+'_'+di+'">'+bake+'</div></div>';
+      mhtml+='</div></div>';
+    });
+  });
+  const mob=document.getElementById('mobileList');
+  if(mob)mob.innerHTML=mhtml;
 }
 
-function updateSOH(ri,di,val){soh[ri][di]=val===''?null:Math.max(0,parseInt(val)||0);recalcRow(ri);}
+// Called by parseRows after data is loaded
+function renderTable(){
+  buildDayBar();
+  syncBoostDisplay();
+  renderView();
+  const mob=document.getElementById('mobStoreBadge');
+  if(mob)mob.textContent=document.getElementById('storeBadge').textContent;
+}
 
-function navSOH(e,ri,di){
-  // Tab or Enter → move down to next row's same day column; Shift+Tab/Enter → move up
+// ── SOH input handlers ──────────────────────────────
+function deskSOH(ri,di,val){
+  soh[ri][di]=val===''?null:Math.max(0,parseInt(val)||0);
+  const boost=(parseFloat(document.getElementById('b'+di)?.value)||0)/100;
+  const bake=calcBake(items[ri].orders[di],soh[ri][di],boost);
+  const el=document.getElementById('bake_'+ri+'_'+di);
+  if(el){el.textContent=bake;el.className=bake<0?'bake neg':bake===0?'bake zero':'bake';}
+  // sync to mobile
+  const mel=document.getElementById('mbake_'+ri+'_'+di);
+  if(mel){mel.textContent=bake;mel.className=bake<0?'mob-bake neg':bake===0?'mob-bake zero':'mob-bake';}
+}
+
+function deskNav(e,ri,di){
   if(e.key==='Enter'||(e.key==='Tab'&&!e.shiftKey)){
     e.preventDefault();
-    var next=document.getElementById('soh_'+(ri+1)+'_'+di);
-    if(next){next.focus();next.select();}
+    const n=document.getElementById('soh_'+(ri+1)+'_'+di);
+    if(n){n.focus();n.select();}
   } else if(e.key==='Tab'&&e.shiftKey){
     e.preventDefault();
-    var prev=document.getElementById('soh_'+(ri-1)+'_'+di);
-    if(prev){prev.focus();prev.select();}
+    const p=document.getElementById('soh_'+(ri-1)+'_'+di);
+    if(p){p.focus();p.select();}
   }
 }
-function recalcRow(ri){
-  const boosts=getBoosts(),it=items[ri];let weekly=0;
-  DAY_LABELS.forEach(function(_,di){
-    const bake=calcBake(it.orders[di],soh[ri][di],boosts[di]);weekly+=Math.max(0,bake);
-    const el=document.getElementById('bake_'+ri+'_'+di);
-    if(el){el.textContent=bake;el.className=bake<0?'bake neg':bake===0?'bake zero':'bake';}
-  });
-  const wel=document.getElementById('weekly_'+ri);if(wel)wel.textContent=weekly;
+
+function mobSOH(ri,di,val){
+  soh[ri][di]=val===''?null:Math.max(0,parseInt(val)||0);
+  const boost=(parseFloat(document.getElementById('b'+di)?.value)||0)/100;
+  const bake=calcBake(items[ri].orders[di],soh[ri][di],boost);
+  const mel=document.getElementById('mbake_'+ri+'_'+di);
+  if(mel){mel.textContent=bake;mel.className=bake<0?'mob-bake neg':bake===0?'mob-bake zero':'mob-bake';}
+  const del=document.getElementById('bake_'+ri+'_'+di);
+  if(del){del.textContent=bake;del.className=bake<0?'bake neg':bake===0?'bake zero':'bake';}
 }
-function recalcAll(){items.forEach(function(_,ri){recalcRow(ri);});}
-function resetSOH(){soh=items.map(function(){return Array(7).fill(null);});document.querySelectorAll('.soh-input').forEach(function(el){el.value='';});recalcAll();}
-function newImport(){items=[];soh=[];storeName='';showError('');document.getElementById('dropZone').style.display='block';document.getElementById('mainContent').style.display='none';document.getElementById('fileInput').value='';}
+
+function mobNav(e,ri,di){
+  if(e.key==='Enter'||e.key==='Tab'){
+    e.preventDefault();
+    const all=document.querySelectorAll('.mob-soh');
+    let found=false;
+    for(let i=0;i<all.length;i++){
+      if(found){all[i].focus();all[i].select();break;}
+      if(all[i]===e.target)found=true;
+    }
+  }
+}
+
+// ── Other actions ───────────────────────────────────
+function resetSOH(){
+  soh=items.map(function(){return Array(7).fill(null);});
+  renderView();
+}
+
+function doNewImport(){
+  items=[];soh=[];storeName='';
+  showError('');
+  document.getElementById('dropZone').style.display='block';
+  document.getElementById('mainContent').style.display='none';
+  document.getElementById('fileInput').value='';
+  document.getElementById('dayBar').innerHTML='';
+  document.getElementById('tbody').innerHTML='';
+  document.getElementById('mobileList').innerHTML='';
+}
+
+function recalcAll(){renderView();}
+
+function updateSOH(ri,di,val){soh[ri][di]=val===''?null:Math.max(0,parseInt(val)||0);}
 
 function exportCSV(){
-  const boosts=getBoosts();
+  const boosts=DAY_LABELS.map(function(_,i){return (parseFloat(document.getElementById('b'+i)?.value||0)||0)/100;});
   let csv='Store,Item No,Description,Group,';
   DAY_LABELS.forEach(function(d){csv+=d+' SOH,'+d+' ORDER,'+d+' BAKE,';});
   csv+='Weekly Total\n';
   items.forEach(function(it,ri){
     csv+='"'+storeName+'","'+it.itemNo+'","'+it.desc+'","'+it.group+'",';
-    DAY_LABELS.forEach(function(_,di){csv+=(soh[ri][di]!==null?soh[ri][di]:'')+','+it.orders[di]+','+calcBake(it.orders[di],soh[ri][di],getBoosts()[di])+',';});
+    DAY_LABELS.forEach(function(_,di){
+      csv+=(soh[ri][di]!==null?soh[ri][di]:'')+','+it.orders[di]+','+calcBake(it.orders[di],soh[ri][di],boosts[di])+',';
+    });
     csv+=DAY_LABELS.reduce(function(s,_,di){return s+Math.max(0,calcBake(it.orders[di],soh[ri][di],boosts[di]));},0)+'\n';
   });
-  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=(storeName||'bakery')+'_production.csv';a.click();
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download=(storeName||'bakery')+'_production.csv';
+  a.click();
 }
+
+function handlePrint(){
+  if(!items.length){showToast('No order loaded to print.');return;}
+  const di=activeDayIndex;
+  const boost=(parseFloat(document.getElementById('b'+di)?.value)||0)/100;
+  const boostPct=Math.round(boost*100);
+  const dateStr=new Date().toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  let h='<div class="ptitle">';
+  h+=(storeName?escHtml(storeName)+' &mdash; ':'') + DAY_LABELS[di] + ' Production Sheet';
+  h+='<span class="psub">'+dateStr+(boostPct?' &nbsp;|&nbsp; Boost: +'+boostPct+'%':'')+'</span></div>';
+  h+='<table><thead><tr>';
+  h+='<th class="left">Item No</th><th class="left">Description</th><th>Group</th><th>SOH</th><th>Order</th><th>BAKE</th>';
+  h+='</tr></thead><tbody>';
+  const groups=[...new Set(items.map(function(i){return i.group;}))];
+  groups.forEach(function(g){
+    const gi=items.filter(function(i){return i.group===g;});
+    const ri_map=items.map(function(it,ri){return{it,ri};}).filter(function(x){return x.it.group===g;});
+    if(g)h+='<tr class="p-grp"><td colspan="6">'+escHtml(g)+'</td></tr>';
+    ri_map.forEach(function({it,ri}){
+      const sv=soh[ri][di]!==null?soh[ri][di]:'—';
+      const ord=it.orders[di]||'—';
+      const bake=calcBake(it.orders[di],soh[ri][di],boost);
+      const bc=bake<0?'p-neg':bake===0?'p-zero':'p-bake';
+      h+='<tr><td class="left" style="font-size:9px">'+escHtml(it.itemNo)+'</td>';
+      h+='<td class="left">'+escHtml(it.desc)+'</td>';
+      h+='<td>'+escHtml(it.group||'—')+'</td>';
+      h+='<td>'+sv+'</td><td>'+ord+'</td>';
+      h+='<td class="'+bc+'">'+bake+'</td></tr>';
+    });
+  });
+  h+='</tbody></table>';
+  document.getElementById('printArea').innerHTML=h;
+  setTimeout(function(){window.print();},80);
+}
+
+window.addEventListener('resize',function(){if(items.length)renderView();});
 
 // ══ ORDER HISTORY ════════════════════════════════════
 function historyKey(store){return 'bps_history_'+(store||'unknown').toLowerCase().replace(/\s+/g,'_');}
@@ -480,10 +657,7 @@ function saveOrder(){
   showToast('Order saved: '+label);
 }
 
-function showToast(msg){
-  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
-  setTimeout(function(){t.classList.remove('show');},3000);
-}
+
 
 function openHistory(){
   const store=storeName||'unknown';
@@ -576,193 +750,13 @@ function downloadSnapshotCSV(id){
   a.click();
 }
 
-function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
-// ── Smart print: builds a single-day print table from live data ──
-async function handlePrint(){
-  const di = activeDayIndex;
-  const dayName = DAY_LABELS[di];
-  const boosts = getBoosts();
-  const boost = boosts[di];
-  const boostPct = Math.round(boost * 100);
-  const dateStr = new Date().toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
 
-  // Build single-day table HTML from live data
-  let tableHtml = '<div class="print-day-title">';
-  tableHtml += (storeName ? storeName + ' &mdash; ' : '') + dayName + ' Production Sheet';
-  tableHtml += '<span style="font-size:9px;font-weight:400;color:#666;margin-left:12px">' + dateStr + '</span>';
-  if(boostPct) tableHtml += '<span style="font-size:9px;font-weight:400;color:#666;margin-left:8px">Boost: +' + boostPct + '%</span>';
-  tableHtml += '</div>';
-  tableHtml += '<table><thead><tr>';
-  tableHtml += '<th class="left">Item No</th><th class="left">Description</th><th>Group</th>';
-  tableHtml += '<th>SOH</th><th>Order</th><th>BAKE</th>';
-  tableHtml += '</tr></thead><tbody>';
 
-  const groups = [...new Set(items.map(function(i){ return i.group; }))];
-  groups.forEach(function(g){
-    const gi = items.map(function(it,ri){ return {it:it,ri:ri}; }).filter(function(x){ return x.it.group === g; });
-    if(g) tableHtml += '<tr class="grp-p"><td colspan="6">' + escHtml(g) + '</td></tr>';
-    gi.forEach(function(x){
-      const it = x.it, ri = x.ri;
-      const order = it.orders[di] || 0;
-      const sohVal = soh[ri][di] !== null ? soh[ri][di] : '';
-      const bake = calcBake(order, soh[ri][di], boost);
-      const bakeClass = bake < 0 ? 'bake-neg' : bake === 0 ? 'bake-zero' : 'bake-p';
-      tableHtml += '<tr>';
-      tableHtml += '<td class="left" style="font-size:9px">' + escHtml(it.itemNo) + '</td>';
-      tableHtml += '<td class="left">' + escHtml(it.desc) + '</td>';
-      tableHtml += '<td>' + escHtml(it.group || '—') + '</td>';
-      tableHtml += '<td class="soh-p">' + (sohVal !== '' ? sohVal : '—') + '</td>';
-      tableHtml += '<td>' + (order || '—') + '</td>';
-      tableHtml += '<td class="' + bakeClass + '">' + bake + '</td>';
-      tableHtml += '</tr>';
-    });
-  });
-  tableHtml += '</tbody></table>';
-
-  document.getElementById('printArea').innerHTML = tableHtml;
-
-  // Small delay to let DOM update, then print
-  setTimeout(function(){
-    window.print();
-  }, 80);
+// History functions use getBoosts() — provide it
+function getBoosts(){
+  return DAY_LABELS.map(function(_,i){return (parseFloat(document.getElementById('b'+i)?.value)||0)/100;});
 }
-
-
-
-// ══ MOBILE VIEW ═══════════════════════════════════════
-let activeDayIndex = 0;
-
-function isMobile(){return window.innerWidth <= 768;}
-
-function buildDaySelector(){
-  const bar = document.getElementById('daySelector');
-  bar.innerHTML = '';
-  DAY_LABELS.forEach(function(d, di){
-    const btn = document.createElement('button');
-    btn.className = 'day-btn' + (di === activeDayIndex ? ' active' : '');
-    btn.textContent = d;
-    btn.onclick = function(){ activeDayIndex = di; buildDaySelector(); renderMobile(); syncMobBoostDisplay(); };
-    bar.appendChild(btn);
-  });
-}
-
-function syncMobBoostDisplay(){
-  const boosts = getBoosts();
-  const label = DAY_LABELS[activeDayIndex];
-  document.getElementById('mobDayLabel').textContent = label;
-  document.getElementById('mobBoost').value = Math.round(boosts[activeDayIndex] * 100);
-}
-
-function syncMobBoost(){
-  const val = parseFloat(document.getElementById('mobBoost').value) || 0;
-  const desktop = document.getElementById('b' + activeDayIndex);
-  if(desktop) desktop.value = val;
-  recalcAll();
-  renderMobile();
-}
-
-function renderMobile(){
-  if(!items.length) return;
-  const boosts = getBoosts();
-  const di = activeDayIndex;
-  const list = document.getElementById('mobileList');
-  const groups = [...new Set(items.map(function(i){ return i.group; }))];
-  let html = '';
-  groups.forEach(function(g){
-    const gi = items.map(function(it,ri){ return {it:it,ri:ri}; }).filter(function(x){ return x.it.group === g; });
-    if(g) html += '<div class="mob-group">' + escHtml(g) + '</div>';
-    gi.forEach(function(x){
-      const it = x.it, ri = x.ri;
-      const order = it.orders[di] || 0;
-      const bake = calcBake(order, soh[ri][di], boosts[di]);
-      const bakeClass = bake < 0 ? 'mob-cell-bake neg' : bake === 0 ? 'mob-cell-bake zero' : 'mob-cell-bake';
-      const sohVal = soh[ri][di] !== null ? soh[ri][di] : '';
-      html += '<div class="mob-row">';
-      html += '<div class="mob-info"><div class="mob-item-no">' + escHtml(it.itemNo) + '</div>';
-      html += '<div class="mob-desc" title="' + escHtml(it.desc) + '">' + escHtml(it.desc) + '</div></div>';
-      html += '<div class="mob-cells">';
-      html += '<div class="mob-cell"><div class="mob-cell-label">SOH</div><input class="mob-soh" type="number" inputmode="numeric" pattern="[0-9]*" value="' + sohVal + '" placeholder="—" min="0" oninput="mobUpdateSOH(' + ri + ',' + di + ',this.value)" onkeydown="mobNavSOH(event,' + ri + ',' + di + ')"></div>';
-      html += '<div class="mob-cell"><div class="mob-cell-label">ORDER</div><div class="mob-cell-val">' + (order || '—') + '</div></div>';
-      html += '<div class="mob-cell"><div class="mob-cell-label">BAKE</div><div class="' + bakeClass + '" id="mbake_' + ri + '_' + di + '">' + bake + '</div></div>';
-      html += '</div></div>';
-    });
-  });
-  list.innerHTML = html;
-}
-
-function mobUpdateSOH(ri, di, val){
-  soh[ri][di] = val === '' ? null : Math.max(0, parseInt(val) || 0);
-  recalcRow(ri);
-  // Update bake cell in mobile view
-  const boosts = getBoosts();
-  const bake = calcBake(items[ri].orders[di], soh[ri][di], boosts[di]);
-  const el = document.getElementById('mbake_' + ri + '_' + di);
-  if(el){ el.textContent = bake; el.className = bake < 0 ? 'mob-cell-bake neg' : bake === 0 ? 'mob-cell-bake zero' : 'mob-cell-bake'; }
-}
-
-function mobNavSOH(e, ri, di){
-  if(e.key === 'Enter' || e.key === 'Next' || e.key === 'Tab'){
-    e.preventDefault();
-    // Find next visible mob-soh input after this row
-    const inputs = document.querySelectorAll('.mob-soh');
-    let found = false;
-    for(let i = 0; i < inputs.length; i++){
-      if(found){ inputs[i].focus(); inputs[i].select(); break; }
-      if(inputs[i] === e.target) found = true;
-    }
-  }
-}
-
-// Hook into renderTable to also update mobile and day selector
-const _origRenderTable = renderTable;
-function renderTable(){
-  _origRenderTable();
-  buildDaySelector();
-  syncMobBoostDisplay();
-  if(isMobile()) renderMobile();
-}
-
-// Hook into recalcAll for mobile sync
-const _origRecalcAll = recalcAll;
-function recalcAll(){
-  _origRecalcAll();
-  if(isMobile()) renderMobile();
-}
-
-// Hook into newImport to reset mobile state
-const _origNewImport = newImport;
-function newImport(){
-  _origNewImport();
-  document.getElementById('mobileList').innerHTML = '';
-  document.getElementById('daySelector').innerHTML = '';
-}
-
-// On resize, refresh view
-window.addEventListener('resize', function(){
-  if(items.length){
-    buildDaySelector();
-    if(isMobile()){
-      syncMobBoostDisplay();
-      renderMobile();
-    }
-  }
-});
-
-// Initial day selector setup after load
-document.addEventListener('DOMContentLoaded', function(){
-  buildDaySelector();
-});
-
-// Patch storeBadge for mobile too via MutationObserver
-const obs = new MutationObserver(function(muts){
-  muts.forEach(function(m){
-    const mob = document.getElementById('mobStoreBadge');
-    if(mob) mob.textContent = document.getElementById('storeBadge').textContent;
-  });
-});
-const sb = document.getElementById('storeBadge');
-if(sb) obs.observe(sb, {childList:true, characterData:true, subtree:true});
 </script>
 </body>
 </html>
