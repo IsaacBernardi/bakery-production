@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bernardi's Marketplace — Bakery Production Sheet</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="https://alcdn.msauth.net/browser/3.27.0/js/msal-browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.1/dist/msal-browser.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;background:#f5f5f3;color:#1a1a1a}
@@ -315,21 +315,24 @@ async function initMsal(){
     return;
   }
   try{
-    const config = {
+    msalInstance = new msal.PublicClientApplication({
       auth:{
         clientId: CLIENT_ID,
         authority: 'https://login.microsoftonline.com/'+TENANT_ID,
         redirectUri: 'https://yellow-forest-0c3a07a00.2.azurestaticapps.net/'
       },
-      cache:{cacheLocation:'sessionStorage',storeAuthStateInCookie:false}
-    };
-    msalInstance = new msal.PublicClientApplication(config);
-    // initialize() exists in MSAL v3+, optional in v2
-    if(typeof msalInstance.initialize === 'function'){
-      await msalInstance.initialize();
-    }
+      cache:{cacheLocation:'localStorage',storeAuthStateInCookie:true}
+    });
+    await msalInstance.initialize();
     msalReady = true;
-    await handleRedirect();
+
+    // Check if already signed in
+    const accounts = msalInstance.getAllAccounts();
+    if(accounts.length > 0){
+      showApp(accounts[0]);
+    } else {
+      document.getElementById('loginScreen').style.display='flex';
+    }
   }catch(e){
     document.getElementById('loginScreen').style.display='flex';
     showLoginErr('Initialisation error: '+e.message);
@@ -337,30 +340,29 @@ async function initMsal(){
   }
 }
 
-async function handleRedirect(){
+async function signIn(){
+  if(!msalReady){ showLoginErr('Still loading, please try again.'); return; }
   try{
-    const resp = await msalInstance.handleRedirectPromise();
-    if(resp && resp.account){ showApp(resp.account); return; }
-    const accounts = msalInstance.getAllAccounts();
-    if(accounts.length>0){ showApp(accounts[0]); return; }
-    document.getElementById('loginScreen').style.display='flex';
+    // Use popup — more reliable than redirect for static web apps
+    const resp = await msalInstance.loginPopup({ scopes:['User.Read','openid','profile'] });
+    if(resp && resp.account) showApp(resp.account);
   }catch(e){
-    document.getElementById('loginScreen').style.display='flex';
-    showLoginErr(e.message);
+    if(e.errorCode !== 'user_cancelled'){
+      showLoginErr(e.message);
+      console.error('MSAL login error:', e);
+    }
   }
 }
 
-async function signIn(){
-  if(!IS_CONFIGURED) return;
-  if(!msalReady){ showLoginErr('Still loading, please try again in a moment.'); return; }
-  try{
-    await msalInstance.loginRedirect({ scopes:['User.Read'] });
-  }catch(e){ showLoginErr(e.message); }
-}
-
 async function signOut(){
-  if(!IS_CONFIGURED || !msalReady) return;
-  try{ await msalInstance.logoutRedirect(); }catch(e){ console.error(e); }
+  if(!msalInstance) return;
+  const accounts = msalInstance.getAllAccounts();
+  try{
+    await msalInstance.logoutPopup({ account: accounts[0] || null });
+    document.getElementById('appHeader').style.display='none';
+    document.getElementById('appContent').style.display='none';
+    document.getElementById('loginScreen').style.display='flex';
+  }catch(e){ console.error(e); }
 }
 
 function showApp(account){
@@ -371,7 +373,12 @@ function showApp(account){
 }
 function showLoginErr(msg){const el=document.getElementById('loginErr');el.textContent=msg;el.style.display='block';}
 
-initMsal();
+// Wait for DOM then initialise
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded', initMsal);
+} else {
+  initMsal();
+}
 
 // ══ SPREADSHEET ══════════════════════════════════════
 const DAY_MAP={mon:0,tue:1,wed:2,thu:3,fri:4,sat:5,sun:6};
