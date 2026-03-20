@@ -342,6 +342,10 @@ let items=[],soh=[],storeName='',activeDayIndex=0;
 let currentStoreCode='';
 
 function isMobile(){return window.innerWidth<=768;}
+function defaultSaveLabel(storeCode){
+  const d=new Date().toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+  return (storeCode||'Store')+' — '+d;
+}
 function showError(msg){const el=document.getElementById('errorMsg');el.textContent=msg;el.style.display=msg?'block':'none';}
 function showToast(msg,dur){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},dur||3000);}
 function getBoosts(){return DAY_LABELS.map(function(_,i){return (parseFloat(document.getElementById('b'+i)?.value)||0)/100;});}
@@ -373,15 +377,20 @@ function showApp(code){
   document.getElementById('appHeader').style.display='flex';
   document.getElementById('appContent').style.display='block';
   document.getElementById('storeChip').textContent='Store: '+code;
+  // Set default save label to store + today's date
+  const lbl=document.getElementById('orderLabel');
+  if(lbl&&!lbl.value)lbl.value=defaultSaveLabel(code);
 }
 
 function switchStore(){
   currentStoreCode='';items=[];soh=[];storeName='';
+  localStorage.removeItem('bps_store');
   document.getElementById('loginScreen').style.display='flex';
   document.getElementById('appHeader').style.display='none';
   document.getElementById('appContent').style.display='none';
   document.getElementById('mainContent').style.display='none';
   document.getElementById('dropZone').style.display='block';
+  const lbl=document.getElementById('orderLabel');if(lbl)lbl.value='';
   const sel=document.getElementById('storeSelect');if(sel)sel.value='';
   document.getElementById('loginErr').style.display='none';
 }
@@ -557,9 +566,9 @@ function renderTable(){
   buildDayBar();
   syncBoostDisplay();
   renderView();
-  // Auto-save the newly imported order as current
-  const lbl=(storeName||currentStoreCode)+' — '+new Date().toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'});
-  if(document.getElementById('orderLabel'))document.getElementById('orderLabel').value=lbl;
+  // Set default save label when new file imported
+  const lbl=document.getElementById('orderLabel');
+  if(lbl)lbl.value=defaultSaveLabel(currentStoreCode);
 }
 
 // ══ DAY SELECTOR ════════════════════════════════════
