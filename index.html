@@ -417,7 +417,7 @@ async function loadLastOrder(storeCode){
     // Sort by name (newest first — we use timestamp in filename)
     names.sort().reverse();
     // Load the most recent order file
-    const latest=names.find(n=>n.endsWith('_order.json'));
+    const latest=names.find(n=>n.endsWith('.json'));
     if(!latest)return;
     const dataRes=await fetch(BLOB_BASE+'/'+latest+'?'+SAS);
     if(!dataRes.ok)return;
@@ -440,10 +440,10 @@ async function saveToBlob(label){
         bake:DAY_LABELS.map(function(_,di){return calcBake(it.orders[di],soh[ri][di],boosts[di]);})};
     })
   };
-  const ts=new Date().toISOString().replace(/[:.]/g,'-');
-  // Save as current order (overwrite) + timestamped history copy
+  // Use label as filename so saving same name overwrites existing entry
+  const safeName=label.trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').substring(0,60)||'order';
   const currentPath=currentStoreCode.toLowerCase()+'/current_order.json';
-  const historyPath=currentStoreCode.toLowerCase()+'/'+ts+'_order.json';
+  const historyPath=currentStoreCode.toLowerCase()+'/'+safeName+'.json';
   const body=JSON.stringify(snap);
   const headers={'x-ms-blob-type':'BlockBlob','Content-Type':'application/json','x-ms-blob-content-type':'application/json'};
   const si=document.getElementById('savingIndicator');
@@ -776,7 +776,7 @@ async function openHistory(){
     if(!res.ok){body.innerHTML='<div class="history-empty">Could not load history. Check your connection.</div>';return;}
     const text=await res.text();
     const names=[...text.matchAll(/<Name>([^<]+)<\/Name>/g)].map(m=>m[1])
-      .filter(n=>n.endsWith('_order.json')&&!n.includes('current_order'));
+      .filter(n=>n.endsWith('.json')&&!n.includes('current_order'));
     names.sort().reverse();
     if(!names.length){body.innerHTML='<div class="history-empty">No saved orders found for store <strong>'+escHtml(currentStoreCode)+'</strong>.</div>';return;}
     // Load all snapshots (metadata only — just label/date)
