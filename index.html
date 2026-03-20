@@ -385,11 +385,24 @@ function showApp(code){
 function switchStore(){
   currentStoreCode='';items=[];soh=[];storeName='';
   localStorage.removeItem('bps_store');
+  // Reset file input so onchange fires on next import
+  const old=document.getElementById('fileInput');
+  if(old){
+    const fresh=document.createElement('input');
+    fresh.type='file';fresh.id='fileInput';
+    fresh.accept='.txt,.csv,.tsv,.xlsx,.xls';
+    fresh.style.display='none';
+    fresh.onchange=function(){handleFile(this);};
+    old.parentNode.replaceChild(fresh,old);
+  }
   document.getElementById('loginScreen').style.display='flex';
   document.getElementById('appHeader').style.display='none';
   document.getElementById('appContent').style.display='none';
   document.getElementById('mainContent').style.display='none';
   document.getElementById('dropZone').style.display='block';
+  document.getElementById('dayBar').innerHTML='';
+  document.getElementById('tbody').innerHTML='';
+  document.getElementById('mobileList').innerHTML='';
   const lbl=document.getElementById('orderLabel');if(lbl)lbl.value='';
   const sel=document.getElementById('storeSelect');if(sel)sel.value='';
   document.getElementById('loginErr').style.display='none';
@@ -704,10 +717,22 @@ function doNewImport(){
   showError('');
   document.getElementById('dropZone').style.display='block';
   document.getElementById('mainContent').style.display='none';
-  document.getElementById('fileInput').value='';
   document.getElementById('dayBar').innerHTML='';
   document.getElementById('tbody').innerHTML='';
   document.getElementById('mobileList').innerHTML='';
+  // Reset save label to store + date
+  const lbl=document.getElementById('orderLabel');
+  if(lbl)lbl.value=defaultSaveLabel(currentStoreCode);
+  // Replace file input completely so onchange fires even for the same file
+  const old=document.getElementById('fileInput');
+  if(old){
+    const fresh=document.createElement('input');
+    fresh.type='file';fresh.id='fileInput';
+    fresh.accept='.txt,.csv,.tsv,.xlsx,.xls';
+    fresh.style.display='none';
+    fresh.onchange=function(){handleFile(this);};
+    old.parentNode.replaceChild(fresh,old);
+  }
 }
 
 function saveOrder(){
