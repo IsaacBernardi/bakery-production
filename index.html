@@ -1390,7 +1390,7 @@ let appStore = 'Forbes'; // current store context
 let activeFilter = 'all';
 let collapsedSE = {}, collapsedBuyer = {}, collapsedMaster = {};
 let newCostVals = {}, newSellVals = {};
-let data = null;
+// [poData declared in shared section]
 
 // ═══════════════════════════════════════════
 // DEFAULT DATA
@@ -1449,15 +1449,15 @@ async function poLoadCloud() {
   poCloud('busy','Loading...');
   try {
     const res = await fetch(`${PO_BLOB}/${PO_CURRENT_BLOB}?${PO_SAS}`);
-    if (res.status === 404) { data = buildDefaultData(); poCloud('ok','No data yet — using defaults'); return; }
+    if (res.status === 404) { poData = buildDefaultData(); poCloud('ok','No data yet — using defaults'); return; }
     if (!res.ok) throw new Error('HTTP '+res.status);
-    data = await res.json();
+    poData = await res.json();
     // ensure new stores/fields exist
-    STORES.forEach(s => { if (!data.storeEntries[s]) data.storeEntries[s]={}; if (!data.dispatchMeta[s]) data.dispatchMeta[s]={printed:false,emailed:false}; });
+    STORES.forEach(s => { if (!poData.storeEntries[s]) poData.storeEntries[s]={}; if (!poData.dispatchMeta[s]) poData.dispatchMeta[s]={printed:false,emailed:false}; });
     poCloud('ok','Loaded from cloud');
     showToast('Data loaded ✓');
   } catch(e) {
-    data = buildDefaultData();
+    poData = buildDefaultData();
     poCloud('err','Cloud error — using local');
     showToast('Could not load from cloud: '+e.message, 5000);
   }
@@ -1465,13 +1465,13 @@ async function poLoadCloud() {
 async function poSaveCloud() {
   poCloud('busy','Saving...');
   // sync UI inputs back
-  data.marketTotal = parseFloat(document.getElementById('po-mktTotal')?.value)||data.marketTotal||12;
-  data.transportTotal = parseFloat(document.getElementById('po-trTotal')?.value)||data.transportTotal||8;
+  poData.marketTotal = parseFloat(document.getElementById('po-mktTotal')?.value)||poData.marketTotal||12;
+  poData.transportTotal = parseFloat(document.getElementById('po-trTotal')?.value)||poData.transportTotal||8;
   try {
     const res = await fetch(`${PO_BLOB}/${PO_CURRENT_BLOB}?${PO_SAS}`, {
       method:'PUT',
       headers:{'x-ms-blob-type':'BlockBlob','Content-Type':'application/json'},
-      body: JSON.stringify(data)
+      body: JSON.stringify(poData)
     });
     if (!res.ok) throw new Error('HTTP '+res.status);
     poCloud('ok','Saved ✓ — '+new Date().toLocaleTimeString('en-AU'));
@@ -1488,7 +1488,7 @@ async function poSaveSnap(label) {
     await fetch(`${PO_BLOB}/${path}?${PO_SAS}`, {
       method:'PUT',
       headers:{'x-ms-blob-type':'BlockBlob','Content-Type':'application/json'},
-      body: JSON.stringify({...data, snapshotLabel:label, snapshotAt:new Date().toISOString()})
+      body: JSON.stringify({...poData, snapshotLabel:label, snapshotAt:new Date().toISOString()})
     });
     showToast('Snapshot saved: '+label);
   } catch(e) { showToast('Snapshot failed: '+e.message, 4000); }
@@ -1533,8 +1533,8 @@ async function poStartApp() {
   document.querySelectorAll('.buyer-only').forEach(el => el.classList.toggle('hidden', appRole!=='buyer'));
   await poLoadCloud();
   // sync market/transport to UI
-  if (document.getElementById('po-mktTotal')) document.getElementById('po-mktTotal').value = data.marketTotal||12;
-  if (document.getElementById('po-trTotal')) document.getElementById('po-trTotal').value = data.transportTotal||8;
+  if (document.getElementById('po-mktTotal')) document.getElementById('po-mktTotal').value = poData.marketTotal||12;
+  if (document.getElementById('po-trTotal')) document.getElementById('po-trTotal').value = poData.transportTotal||8;
   poTab('tab-store');
   poRenderSE();
 }
@@ -1552,20 +1552,20 @@ function poLogout() {
 // ═══════════════════════════════════════════
 function packSize(pack) { const v=parseFloat(String(pack).split(' ')[0]); return isFinite(v)&&v>0?v:1; }
 function oncostFrac() {
-  const market=parseFloat(document.getElementById('po-mktTotal')?.value)||data.marketTotal||0;
-  const transport=parseFloat(document.getElementById('po-trTotal')?.value)||data.transportTotal||0;
+  const market=parseFloat(document.getElementById('po-mktTotal')?.value)||poData.marketTotal||0;
+  const transport=parseFloat(document.getElementById('po-trTotal')?.value)||poData.transportTotal||0;
   const total=allActive().reduce((s,i)=>s+i.ctn,0);
   return total>0?(market+transport)/total:0;
 }
 function unitNet(ctn,pack){ return ctn*(1+oncostFrac())/packSize(pack); }
 function calcGP(sell,ctn,pack){ const l=unitNet(ctn,pack); if(!sell)return 0; return((sell-l)/sell)*100; }
-function allActive(){ return data.categories.flatMap(c=>c.items.filter(i=>i.active).map(i=>({...i,category:c.name}))); }
-function getSent(b,k){ return parseFloat(data.sentValues[b]?.[k]||0)||0; }
-function getBoh(store,b){ return parseFloat(data.storeEntries[store]?.[b]?.boh||0)||0; }
+function allActive(){ return poData.categories.flatMap(c=>c.items.filter(i=>i.active).map(i=>({...i,category:c.name}))); }
+function getSent(b,k){ return parseFloat(poData.sentValues[b]?.[k]||0)||0; }
+function getBoh(store,b){ return parseFloat(poData.storeEntries[store]?.[b]?.boh||0)||0; }
 function statusTone(s){ return s==='submitted'?'blue':s==='locked'?'rose':'slate'; }
 function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function showToast(msg, dur=2500) { const t=document.getElementById('po-toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),dur); }
-function sortedCats(){ return [...data.categories].sort((a,b)=>a.name.localeCompare(b.name)).map(c=>({...c,items:[...c.items].sort((a,b)=>a.desc.localeCompare(b.desc))})); }
+function sortedCats(){ return [...poData.categories].sort((a,b)=>a.name.localeCompare(b.name)).map(c=>({...c,items:[...c.items].sort((a,b)=>a.desc.localeCompare(b.desc))})); }
 function catNames(){ return sortedCats().map(c=>c.name); }
 function effectiveStore(){ return appStore; }
 
@@ -1587,9 +1587,9 @@ function poTab(id) {
 // STORE ENTRY
 // ═══════════════════════════════════════════
 function poRenderSE() {
-  if (!data) return;
+  if (!poData) return;
   const store = effectiveStore();
-  const status = data.storeStatuses[store];
+  const status = poData.storeStatuses[store];
   const ro = appRole==='store' && status!=='draft';
 
   // Toolbar
@@ -1608,7 +1608,7 @@ function poRenderSE() {
     toolbar += `<button class="btn btn-outline btn-sm" onclick="poReopenStore()">Reopen</button>`;
     toolbar += `<button class="btn btn-rose btn-sm" onclick="poLockStore()">Lock Store</button>`;
   }
-  toolbar += `<span class="text-xs text-slate">Last reset: ${escHtml(data.lastReset)}</span>`;
+  toolbar += `<span class="text-xs text-slate">Last reset: ${escHtml(poData.lastReset)}</span>`;
   document.getElementById('po-storeBar').innerHTML = toolbar;
   document.getElementById('po-roAlert').className = 'alert alert-amber mb12'+(ro?'':' hidden');
 
@@ -1620,7 +1620,7 @@ function poRenderSE() {
     const col = collapsedSE[cat.name];
     html += `<tr class="cat-row" onclick="poToggleSE('${escHtml(cat.name)}')"><td colspan="5">${col?'▶':'▼'} ${escHtml(cat.name)}</td></tr>`;
     if (!col) actives.forEach(item => {
-      const e = data.storeEntries[store]?.[item.barcode]||{boh:'',req:''};
+      const e = poData.storeEntries[store]?.[item.barcode]||{boh:'',req:''};
       const dis = ro?'disabled':'';
       html += `<tr><td class="text-slate">${escHtml(item.barcode)}</td><td style="font-weight:500">${escHtml(item.desc)}</td><td>${escHtml(item.pack)}</td>
         <td><input type="number" style="width:75px" value="${escHtml(e.boh)}" ${dis} onchange="poUpdateEntry('${escHtml(store)}','${escHtml(item.barcode)}','boh',this.value)"></td>
@@ -1633,28 +1633,28 @@ function poRenderSE() {
 function poToggleSE(name){ collapsedSE[name]=!collapsedSE[name]; poRenderSE(); }
 function poSetStore(store){ appStore=store; poRenderSE(); }
 function poUpdateEntry(store,barcode,field,value){
-  if(!data.storeEntries[store]) data.storeEntries[store]={};
-  if(!data.storeEntries[store][barcode]) data.storeEntries[store][barcode]={boh:'',req:''};
-  data.storeEntries[store][barcode][field]=value;
+  if(!poData.storeEntries[store]) poData.storeEntries[store]={};
+  if(!poData.storeEntries[store][barcode]) poData.storeEntries[store][barcode]={boh:'',req:''};
+  poData.storeEntries[store][barcode][field]=value;
 }
 function poResetCounts(){
   STORES.forEach(s=>{
-    Object.keys(data.storeEntries[s]||{}).forEach(b=>{ data.storeEntries[s][b]={boh:'',req:''}; });
-    data.storeStatuses[s]='draft';
+    Object.keys(poData.storeEntries[s]||{}).forEach(b=>{ poData.storeEntries[s][b]={boh:'',req:''}; });
+    poData.storeStatuses[s]='draft';
   });
-  data.lastReset=new Date().toLocaleString('en-AU');
+  poData.lastReset=new Date().toLocaleString('en-AU');
   poRenderSE();
   showToast('Morning reset complete — all BOH cleared');
 }
-function poSubmitStore(){ const s=effectiveStore(); data.storeStatuses[s]='submitted'; poRenderSE(); showToast(`${s} order submitted`); }
-function poReopenStore(){ const s=effectiveStore(); data.storeStatuses[s]='draft'; poRenderSE(); showToast(`${s} order reopened`); }
-function poLockStore(){ const s=effectiveStore(); data.storeStatuses[s]='locked'; poRenderSE(); showToast(`${s} order locked`); }
+function poSubmitStore(){ const s=effectiveStore(); poData.storeStatuses[s]='submitted'; poRenderSE(); showToast(`${s} order submitted`); }
+function poReopenStore(){ const s=effectiveStore(); poData.storeStatuses[s]='draft'; poRenderSE(); showToast(`${s} order reopened`); }
+function poLockStore(){ const s=effectiveStore(); poData.storeStatuses[s]='locked'; poRenderSE(); showToast(`${s} order locked`); }
 
 // ═══════════════════════════════════════════
 // BUYER DASHBOARD
 // ═══════════════════════════════════════════
 function poRecalc(){
-  if(!data)return;
+  if(!poData)return;
   const items=allActive();
   const total=items.reduce((s,i)=>s+i.ctn,0);
   document.getElementById('po-sPT').textContent='$'+total.toFixed(2);
@@ -1706,11 +1706,11 @@ function poRenderBuyer(){
       html+=`<tr>
         <td class="text-slate">${escHtml(item.barcode)}</td><td style="font-weight:500">${escHtml(item.desc)}</td>
         <td>${getBoh('Forbes',item.barcode)}</td>
-        <td><input type="number" style="width:65px" value="${escHtml(data.sentValues[item.barcode]?.fbs||'')}" onchange="poUpdateSent('${escHtml(item.barcode)}','fbs',this.value)"></td>
+        <td><input type="number" style="width:65px" value="${escHtml(poData.sentValues[item.barcode]?.fbs||'')}" onchange="poUpdateSent('${escHtml(item.barcode)}','fbs',this.value)"></td>
         <td>${getBoh('Blayney',item.barcode)}</td>
-        <td><input type="number" style="width:65px" value="${escHtml(data.sentValues[item.barcode]?.bl||'')}" onchange="poUpdateSent('${escHtml(item.barcode)}','bl',this.value)"></td>
+        <td><input type="number" style="width:65px" value="${escHtml(poData.sentValues[item.barcode]?.bl||'')}" onchange="poUpdateSent('${escHtml(item.barcode)}','bl',this.value)"></td>
         <td>${getBoh('West Wyalong',item.barcode)}</td>
-        <td><input type="number" style="width:65px" value="${escHtml(data.sentValues[item.barcode]?.wyl||'')}" onchange="poUpdateSent('${escHtml(item.barcode)}','wyl',this.value)"></td>
+        <td><input type="number" style="width:65px" value="${escHtml(poData.sentValues[item.barcode]?.wyl||'')}" onchange="poUpdateSent('${escHtml(item.barcode)}','wyl',this.value)"></td>
         <td>$${item.ctn.toFixed(2)}</td><td>$${un.toFixed(2)}</td>
         <td>$${item.sell.toFixed(2)}</td><td>${gp.toFixed(1)}%</td>
         <td><input type="number" style="width:75px" placeholder="${item.ctn.toFixed(2)}" value="${escHtml(nc)}" onchange="newCostVals['${escHtml(item.barcode)}']=this.value;poRenderBuyer()"></td>
@@ -1722,15 +1722,15 @@ function poRenderBuyer(){
   document.getElementById('po-bTbody').innerHTML=html;
 }
 function poToggleBuyer(name){ collapsedBuyer[name]=!collapsedBuyer[name]; poRenderBuyer(); }
-function poUpdateSent(b,k,v){ if(!data.sentValues[b])data.sentValues[b]={fbs:'',bl:'',wyl:''}; data.sentValues[b][k]=v; poRecalc(); }
+function poUpdateSent(b,k,v){ if(!poData.sentValues[b])poData.sentValues[b]={fbs:'',bl:'',wyl:''}; poData.sentValues[b][k]=v; poRecalc(); }
 function poApplyCost(){
-  data.categories=data.categories.map(c=>({...c,items:c.items.map(i=>{
+  poData.categories=poData.categories.map(c=>({...c,items:c.items.map(i=>{
     const v=newCostVals[i.barcode]; return v&&parseFloat(v)!==i.ctn?{...i,previousCtn:i.ctn,ctn:parseFloat(v)}:i;
   })}));
   newCostVals={}; poRenderBuyer(); showToast('Cost changes applied');
 }
 function poApplyPrice(){
-  data.categories=data.categories.map(c=>({...c,items:c.items.map(i=>{
+  poData.categories=poData.categories.map(c=>({...c,items:c.items.map(i=>{
     const v=newSellVals[i.barcode]; return v&&parseFloat(v)!==i.sell?{...i,previousSell:i.sell,sell:parseFloat(v)}:i;
   })}));
   newSellVals={}; poRenderBuyer(); showToast('Price changes applied');
@@ -1774,35 +1774,35 @@ function poRenderPM(){
 }
 function poToggleMaster(name){ collapsedMaster[name]=!collapsedMaster[name]; poRenderPM(); }
 function poUpdatePF(barcode,field,value){
-  data.categories=data.categories.map(c=>({...c,items:c.items.map(i=>i.barcode===barcode?{...i,[field]:value}:i)}));
+  poData.categories=poData.categories.map(c=>({...c,items:c.items.map(i=>i.barcode===barcode?{...i,[field]:value}:i)}));
   poRenderPM();
 }
 function poUpdatePack(barcode,qty,unit){ poUpdatePF(barcode,'pack',`${qty} ${unit}`.trim()); }
 function poRenameCat(oldName,newName){
   const t=newName.trim(); if(!t)return;
-  data.categories=data.categories.map(c=>c.name===oldName?{...c,name:t}:c);
+  poData.categories=poData.categories.map(c=>c.name===oldName?{...c,name:t}:c);
   poRenderPM();
 }
 function poMoveProd(barcode,targetCat){
   let moved=null;
-  const removed=data.categories.map(c=>({...c,items:c.items.filter(i=>{ if(i.barcode===barcode){moved=i;return false;} return true; })}));
+  const removed=poData.categories.map(c=>({...c,items:c.items.filter(i=>{ if(i.barcode===barcode){moved=i;return false;} return true; })}));
   if(!moved)return;
-  data.categories=removed.map(c=>c.name===targetCat?{...c,items:[...c.items,moved]}:c);
+  poData.categories=removed.map(c=>c.name===targetCat?{...c,items:[...c.items,moved]}:c);
   poRenderPM();
 }
 function poAddProduct(){
   const newItem={barcode:Date.now().toString(),desc:'New Product',pack:'1 KG',ctn:0,previousCtn:0,sell:0,previousSell:0,active:true};
-  if(!data.categories.length) data.categories=[{name:'New Category',items:[]}];
-  data.categories[0]={...data.categories[0],items:[...data.categories[0].items,newItem]};
-  STORES.forEach(s=>{ if(!data.storeEntries[s])data.storeEntries[s]={}; data.storeEntries[s][newItem.barcode]={boh:'',req:''}; });
-  data.sentValues[newItem.barcode]={fbs:'',bl:'',wyl:''};
+  if(!poData.categories.length) poData.categories=[{name:'New Category',items:[]}];
+  poData.categories[0]={...poData.categories[0],items:[...poData.categories[0].items,newItem]};
+  STORES.forEach(s=>{ if(!poData.storeEntries[s])poData.storeEntries[s]={}; poData.storeEntries[s][newItem.barcode]={boh:'',req:''}; });
+  poData.sentValues[newItem.barcode]={fbs:'',bl:'',wyl:''};
   poRenderPM(); showToast('Product added');
 }
 function poAddCat(){
   const input=document.getElementById('po-newCat'); const name=input.value.trim();
   if(!name)return;
-  if(data.categories.some(c=>c.name.toLowerCase()===name.toLowerCase())){ showToast('Category already exists'); return; }
-  data.categories.push({name,items:[]}); input.value='';
+  if(poData.categories.some(c=>c.name.toLowerCase()===name.toLowerCase())){ showToast('Category already exists'); return; }
+  poData.categories.push({name,items:[]}); input.value='';
   poRenderPM(); showToast('Category added');
 }
 function poArchive(barcode){ poUpdatePF(barcode,'active',false); showToast('Product archived'); }
@@ -1811,13 +1811,13 @@ function poArchive(barcode){ poUpdatePF(barcode,'active',false); showToast('Prod
 // DISPATCH
 // ═══════════════════════════════════════════
 function poRenderDispatch(){
-  if(!data) return;
+  if(!poData) return;
   const storesToShow=appRole==='buyer'?STORES:[appStore];
   let html='';
   storesToShow.forEach(store=>{
     const key=STORE_KEYS[store];
-    const dStatus=data.dispatchStatuses[store];
-    const meta=data.dispatchMeta[store]||{printed:false,emailed:false};
+    const dStatus=poData.dispatchStatuses[store];
+    const meta=poData.dispatchMeta[store]||{printed:false,emailed:false};
     const rows=allActive().filter(i=>getSent(i.barcode,key)>0);
     html+=`<div class="card mb16">
       <div class="card-header">
@@ -1853,20 +1853,20 @@ function poRenderDispatch(){
   document.getElementById('po-dispContent').innerHTML=html;
 }
 function poFinalise(store){
-  data.dispatchStatuses[store]='finalised';
+  poData.dispatchStatuses[store]='finalised';
   // Clear BOH and customer requests for that store, reset status to draft for next cycle
-  if(data.storeEntries[store]){
-    Object.keys(data.storeEntries[store]).forEach(b=>{
-      data.storeEntries[store][b]={boh:'',req:''};
+  if(poData.storeEntries[store]){
+    Object.keys(poData.storeEntries[store]).forEach(b=>{
+      poData.storeEntries[store][b]={boh:'',req:''};
     });
   }
-  data.storeStatuses[store]='draft';
+  poData.storeStatuses[store]='draft';
   poRenderDispatch();
   showToast(`${store} dispatch finalised — BOH cleared for next cycle`);
 }
-function poReopenDisp(store){ data.dispatchStatuses[store]='draft'; poRenderDispatch(); showToast(`${store} dispatch reopened`); }
-function poTogglePrint(store){ data.dispatchMeta[store].printed=!data.dispatchMeta[store].printed; poRenderDispatch(); }
-function poToggleEmail(store){ data.dispatchMeta[store].emailed=!data.dispatchMeta[store].emailed; poRenderDispatch(); }
+function poReopenDisp(store){ poData.dispatchStatuses[store]='draft'; poRenderDispatch(); showToast(`${store} dispatch reopened`); }
+function poTogglePrint(store){ poData.dispatchMeta[store].printed=!poData.dispatchMeta[store].printed; poRenderDispatch(); }
+function poToggleEmail(store){ poData.dispatchMeta[store].emailed=!poData.dispatchMeta[store].emailed; poRenderDispatch(); }
 
 // ═══════════════════════════════════════════
 // INIT
