@@ -394,6 +394,38 @@ tbody tr:hover{background:var(--s50)}
 #panel-produce .cloud-dot.busy{background:#f59e0b;animation:pulse 1s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
 .produce-card{background:var(--white);border:1px solid var(--s200);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;width:100%}
+/* ── Produce mobile ── */
+.po-desktop-table{display:block}
+.po-mobile-list{display:none}
+@media(max-width:768px){
+  .po-desktop-table{display:none!important}
+  .po-mobile-list{display:flex;flex-direction:column;gap:0;border:1px solid var(--s200);border-radius:12px;overflow:hidden;background:#fff}
+  .po-mob-group{background:var(--s100);padding:7px 14px;font-size:10px;font-weight:700;color:var(--s500);text-transform:uppercase;letter-spacing:0.05em;border-bottom:1px solid var(--s200);cursor:pointer}
+  .po-mob-row{display:flex;align-items:flex-start;background:#fff;border-bottom:1px solid var(--s100);padding:10px 14px;gap:10px}
+  .po-mob-row:last-child{border-bottom:none}
+  .po-mob-info{flex:1;min-width:0}
+  .po-mob-barcode{font-size:10px;color:var(--s400);margin-bottom:2px}
+  .po-mob-desc{font-size:14px;font-weight:500;color:var(--s900);white-space:normal;word-break:break-word;line-height:1.3;margin-bottom:2px}
+  .po-mob-pack{font-size:11px;color:var(--s500)}
+  .po-mob-inputs{display:flex;gap:8px;flex-shrink:0;padding-top:2px}
+  .po-mob-field{display:flex;flex-direction:column;align-items:center;gap:3px}
+  .po-mob-field label{font-size:9px;color:var(--s400);font-weight:700;text-transform:uppercase}
+  .po-mob-field input[type=number]{width:64px;padding:5px 4px;font-size:14px;border:1.5px solid var(--s300);border-radius:8px;text-align:center;-webkit-appearance:none}
+  .po-mob-field input[type=text]{width:100px;padding:5px 6px;font-size:12px;border:1.5px solid var(--s300);border-radius:8px}
+  .po-mob-field input:focus{border-color:var(--b600);outline:none;box-shadow:0 0 0 3px rgba(37,99,235,0.1)}
+  .po-mob-field input:disabled{background:var(--s100);color:var(--s400)}
+  /* Also make the toolbar wrap nicely on mobile */
+  #panel-produce .toolbar{gap:6px}
+  #panel-produce .pill{padding:4px 10px;font-size:12px}
+  #panel-produce .badge{font-size:11px}
+  #panel-produce .btn-sm{font-size:11px;padding:5px 9px}
+  /* Produce save bar on mobile */
+  #panel-produce .save-bar{flex-direction:column;align-items:flex-start;gap:8px}
+  /* App inner padding on mobile */
+  #panel-produce .app-inner{padding:10px;gap:10px}
+  /* Card body padding */
+  #panel-produce .card-body{padding:12px}
+}
 #panel-produce .hidden{display:none!important}
 #panel-produce .po-buyer-only.hidden{display:none!important}
 #panel-produce .card{max-width:none!important;width:100%!important;text-align:left;border-radius:12px;box-sizing:border-box}
@@ -1577,23 +1609,51 @@ function renderStoreEntry() {
   document.getElementById('po-storeBar').innerHTML = toolbar;
   document.getElementById('po-roAlert').className = 'alert alert-amber mb12'+(ro?'':' hidden');
 
-  // Table
-  let html = '<div class="table-wrap"><table><thead><tr><th>Barcode</th><th>Product</th><th>Pack</th><th>BOH (ctns)</th><th>Customer Request</th></tr></thead><tbody>';
+  // Desktop table
+  let html = '<div class="po-desktop-table table-wrap"><table><thead><tr><th>Barcode</th><th>Product</th><th>Pack</th><th>BOH (ctns)</th><th>Customer Request</th></tr></thead><tbody>';
+  // Mobile cards
+  let mob = '<div class="po-mobile-list">';
+
   sortedCats().forEach(cat => {
     const actives = cat.items.filter(i=>i.active);
     if (!actives.length) return;
     const col = po_collapsedSE[cat.name];
+    // Desktop group row
     html += `<tr class="cat-row" onclick="toggleSE('${esc(cat.name)}')"><td colspan="5">${col?'▶':'▼'} ${esc(cat.name)}</td></tr>`;
+    // Mobile group header
+    mob += `<div class="po-mob-group" onclick="toggleSE('${esc(cat.name)}')">${col?'▶':'▼'} ${esc(cat.name)}</div>`;
+
     if (!col) actives.forEach(item => {
       const e = po_data.storeEntries[store]?.[item.barcode]||{boh:'',req:''};
       const dis = ro?'disabled':'';
+      // Desktop row
       html += `<tr><td class="text-slate">${esc(item.barcode)}</td><td style="font-weight:500">${esc(item.desc)}</td><td>${esc(item.pack)}</td>
         <td><input type="number" style="width:75px" value="${esc(e.boh)}" ${dis} onchange="updateEntry('${esc(store)}','${esc(item.barcode)}','boh',this.value)"></td>
         <td><input type="text" style="width:130px" value="${esc(e.req)}" ${dis} onchange="updateEntry('${esc(store)}','${esc(item.barcode)}','req',this.value)"></td></tr>`;
+      // Mobile card
+      mob += `<div class="po-mob-row">
+        <div class="po-mob-info">
+          <div class="po-mob-barcode">${esc(item.barcode)}</div>
+          <div class="po-mob-desc">${esc(item.desc)}</div>
+          <div class="po-mob-pack">${esc(item.pack)}</div>
+        </div>
+        <div class="po-mob-inputs">
+          <div class="po-mob-field">
+            <label>BOH</label>
+            <input type="number" value="${esc(e.boh)}" ${dis} onchange="updateEntry('${esc(store)}','${esc(item.barcode)}','boh',this.value)">
+          </div>
+          <div class="po-mob-field">
+            <label>Request</label>
+            <input type="text" value="${esc(e.req)}" ${dis} placeholder="—" onchange="updateEntry('${esc(store)}','${esc(item.barcode)}','req',this.value)">
+          </div>
+        </div>
+      </div>`;
     });
   });
+
   html += '</tbody></table></div>';
-  document.getElementById('po-seTable').innerHTML = html;
+  mob += '</div>';
+  document.getElementById('po-seTable').innerHTML = html + mob;
 }
 function toggleSE(name){ po_collapsedSE[name]=!po_collapsedSE[name]; renderStoreEntry(); }
 function setActiveStore(store){ po_appStore=store; renderStoreEntry(); }
