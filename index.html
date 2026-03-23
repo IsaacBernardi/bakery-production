@@ -543,6 +543,15 @@ tbody tr:hover{background:var(--s50)}
 </div>
 
 
+<div class="modal-backdrop" id="historyModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Order History — <span id="historyStoreLabel"></span></span>
+      <button class="modal-close" onclick="closeHistory()">&#x2715;</button>
+    </div>
+    <div class="modal-body" id="historyBody"></div>
+  </div>
+</div>
   </div>
   <div class="u-panel" id="panel-produce">
 <!-- ═══════════════ LOGIN SCREEN ═══════════════ -->
@@ -775,7 +784,7 @@ function defaultSaveLabel(storeCode){
   return (storeCode||'Store')+' — '+d;
 }
 function showError(msg){const el=document.getElementById('errorMsg');el.textContent=msg;el.style.display=msg?'block':'none';}
-function showToast(msg,dur){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},dur||3000);}
+function showToast(msg,dur){const t=document.getElementById('sharedToast')||document.getElementById('toast');if(t){t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},dur||3000);}}
 function getBoosts(){return DAY_LABELS.map(function(_,i){return (parseFloat(document.getElementById('b'+i)?.value)||0)/100;});}
 function calcBake(order,sohVal,boost){return Math.round(order*(1+boost)-(sohVal!==null?sohVal:0));}
 
@@ -796,32 +805,32 @@ function pickStore(code){
 function doLogin(){
   const sel = document.getElementById('storeSelect');
   const code = sel ? sel.value : '';
-  if(!code){document.getElementById('loginErr').textContent='Please select your store.';document.getElementById('loginErr').style.display='block';return;}
+  // [loginErr handled by unified shell]
   pickStore(code);
 }
 
+
 function showApp(code){
-  document.getElementById('loginScreen').style.display='none';
-  document.getElementById('menuScreen').style.display='flex';
-  document.getElementById('menuStoreName').textContent=code;
+  var ac=document.getElementById('appContent');if(ac)ac.style.display='block';
+  var chip=document.getElementById('userChip');if(chip)chip.textContent='Store: '+code;
+  var lbl=document.getElementById('orderLabel');if(lbl&&!lbl.value)lbl.value=defaultSaveLabel(code);
+  var mob=document.getElementById('mobOrderLabel');if(mob&&!mob.value)mob.value=defaultSaveLabel(code);
 }
 
-function openApp(which){
-  if(which==='produce'){
-    // Open produce ordering app in new tab
-    // Update this URL once the produce ordering app is deployed
-    window.open('https://chatgpt.com/canvas/shared/69c098ef6d348191b9d4cc59429c521b','_blank');
-    return;
-  }
-  // Daily production sheet
-  document.getElementById('menuScreen').style.display='none';
-  document.getElementById('appHeader').style.display='flex';
-  document.getElementById('appContent').style.display='block';
-  document.getElementById('storeChip').textContent='Store: '+currentStoreCode;
-  // Set default save label to store + today's date
-  const lbl=document.getElementById('orderLabel');
-  if(lbl&&!lbl.value)lbl.value=defaultSaveLabel(currentStoreCode);
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 function switchStore(){
   currentStoreCode='';items=[];soh=[];storeName='';
@@ -836,10 +845,10 @@ function switchStore(){
     fresh.onchange=function(){handleFile(this);};
     old.parentNode.replaceChild(fresh,old);
   }
-  document.getElementById('menuScreen').style.display='none';
-  document.getElementById('loginScreen').style.display='flex';
-  document.getElementById('appHeader').style.display='none';
-  document.getElementById('appContent').style.display='none';
+  // [handled by unified shell]
+  // [handled by unified shell]
+
+
   document.getElementById('mainContent').style.display='none';
   document.getElementById('dropZone').style.display='block';
   document.getElementById('dayBar').innerHTML='';
@@ -847,23 +856,23 @@ function switchStore(){
   document.getElementById('mobileList').innerHTML='';
   const lbl=document.getElementById('orderLabel');if(lbl)lbl.value='';
   const sel=document.getElementById('storeSelect');if(sel)sel.value='';
-  document.getElementById('loginErr').style.display='none';
+  // [loginErr handled by unified shell]
 }
 
 // Auto-login if store was remembered
 const VALID_STORES = ['FORBES','BLAYNEY','BATHURST','WYALONG'];
-window.addEventListener('DOMContentLoaded',function(){
-  const saved=localStorage.getItem('bps_store');
-  if(saved && VALID_STORES.includes(saved)){
-    currentStoreCode=saved;
-    const sel=document.getElementById('storeSelect');if(sel)sel.value=saved;
-    pickStore(saved);
-  } else {
-    // Clear any invalid stored value (e.g. old 'FORB' code)
-    localStorage.removeItem('bps_store');
-  }
-  buildDayBar();
-});
+// [bakery auto-login removed - handled by unified shell]
+
+
+
+
+
+
+
+
+
+
+
 
 // ══ AZURE BLOB STORAGE ═══════════════════════════════
 function blobUrl(path){return BLOB_BASE+'/'+path+'?'+SAS;}
@@ -890,7 +899,7 @@ async function loadLastOrder(storeCode){
       restoreSnapshot(snap);
       showToast('Loaded last order: '+snap.label);
     }
-  }catch(e){console.log('No previous order found:',e.message);}
+  }catch(e){/* No previous order - normal on first use */}
 }
 
 async function saveToBlob(label){
@@ -944,9 +953,9 @@ function readFile(f){
   if(isExcel){
     reader.onload=function(e){
       try{
-        const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+        const wb=(window.XLSX||XLSX).read(new Uint8Array(e.target.result),{type:'array'});
         const ws=wb.Sheets[wb.SheetNames[0]];
-        parseRows(XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false}));
+        parseRows((window.XLSX||XLSX).utils.sheet_to_json(ws,{header:1,defval:'',raw:false}));
       }catch(err){showError('Could not read Excel file: '+err.message);}
     };
     reader.readAsArrayBuffer(f);
@@ -1241,7 +1250,7 @@ window.addEventListener('resize',function(){if(items.length)renderView();});
 
 // ══ HISTORY ══════════════════════════════════════════
 async function openHistory(){
-  document.getElementById('historyStoreLabel').textContent=currentStoreCode;
+  var _hsl=document.getElementById('historyStoreLabel');if(_hsl)_hsl.textContent=currentStoreCode;
   document.getElementById('historyModal').classList.add('open');
   const body=document.getElementById('historyBody');
   body.innerHTML='<div class="history-loading">Loading history...</div>';
@@ -1395,7 +1404,7 @@ async function deleteHistoryOrder(idx){
 }
 
 function closeHistory(){document.getElementById('historyModal').classList.remove('open');}
-document.getElementById('historyModal').addEventListener('click',function(e){if(e.target===this)closeHistory();});
+var _hm=document.getElementById('historyModal');if(_hm)_hm.addEventListener('click',function(e){if(e.target===this)closeHistory();});
 
 function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
@@ -1531,7 +1540,7 @@ async function loadFromCloud() {
   } catch(e) {
     data = buildDefaultData();
     setCloud('err','Cloud error — using local');
-    showToast('Could not load from cloud: '+e.message, 5000);
+    if(e.message!=='Failed to fetch')showToast('Could not load from cloud: '+e.message, 5000);
   }
 }
 async function saveToCloud() {
@@ -1598,9 +1607,9 @@ function loginBuyer() {
   startApp();
 }
 async function startApp() {
-  document.getElementById('loginScreen').style.display = 'none';
+  // [handled by unified shell]
   document.getElementById('appScreen').style.display = 'block';
-  document.getElementById('storeChip').textContent = appRole==='buyer' ? 'Buyer' : 'Store: '+appStore;
+  var _chip=document.getElementById('userChip');if(_chip)_chip.textContent=appRole==='buyer'?'Buyer':'Store: '+appStore;
   // Show/hide buyer tabs
   document.querySelectorAll('.buyer-only').forEach(el => el.classList.toggle('hidden', appRole!=='buyer'));
   await loadFromCloud();
@@ -1611,7 +1620,7 @@ async function startApp() {
   renderStoreEntry();
 }
 function doLogout() {
-  document.getElementById('loginScreen').style.display = 'flex';
+  // [handled by unified shell]
   document.getElementById('appScreen').style.display = 'none';
   document.getElementById('pinInput').value = '';
   document.getElementById('loginErr').style.display = 'none';
@@ -1667,18 +1676,18 @@ function renderStoreEntry() {
   // Toolbar
   let toolbar = '';
   if (appRole==='buyer') {
-    STORES.forEach(s => { toolbar += `<button class="pill${s===store?' active':''}" onclick="setActiveStore('${esc(s)}')">${esc(s)}</button>`; });
+    STORES.forEach(s => { toolbar += `<button class="pill${s===store?' active':''}" onclick="poSetActiveStore('${esc(s)}')">${esc(s)}</button>`; });
   } else {
     toolbar += `<span class="badge badge-slate">${esc(store)}</span>`;
   }
   toolbar += `<span class="badge badge-blue">Cycle: Tuesday</span>`;
   toolbar += `<span class="badge badge-amber">Cutoff: 5:00 PM</span>`;
   toolbar += `<span class="badge badge-${statusTone(status)}">Status: ${status}</span>`;
-  toolbar += `<button class="btn btn-dark btn-sm" onclick="resetStoreCounts()">Morning Reset</button>`;
-  toolbar += `<button class="btn btn-outline btn-sm" onclick="submitStore()">Submit Order</button>`;
+  toolbar += `<button class="btn btn-dark btn-sm" onclick="poResetCounts()">Morning Reset</button>`;
+  toolbar += `<button class="btn btn-outline btn-sm" onclick="poSubmitStore()">Submit Order</button>`;
   if (appRole==='buyer') {
-    toolbar += `<button class="btn btn-outline btn-sm" onclick="reopenStore()">Reopen</button>`;
-    toolbar += `<button class="btn btn-rose btn-sm" onclick="lockStore()">Lock Store</button>`;
+    toolbar += `<button class="btn btn-outline btn-sm" onclick="poReopenStore()">Reopen</button>`;
+    toolbar += `<button class="btn btn-rose btn-sm" onclick="poLockStore()">Lock Store</button>`;
   }
   toolbar += `<span class="text-xs text-slate">Last reset: ${esc(data.lastReset)}</span>`;
   document.getElementById('storeToolbar').innerHTML = toolbar;
@@ -1690,7 +1699,7 @@ function renderStoreEntry() {
     const actives = cat.items.filter(i=>i.active);
     if (!actives.length) return;
     const col = collapsedSE[cat.name];
-    html += `<tr class="cat-row" onclick="toggleSE('${esc(cat.name)}')"><td colspan="5">${col?'▶':'▼'} ${esc(cat.name)}</td></tr>`;
+    html += `<tr class="cat-row" onclick="poToggleSE('${esc(cat.name)}')"><td colspan="5">${col?'▶':'▼'} ${esc(cat.name)}</td></tr>`;
     if (!col) actives.forEach(item => {
       const e = data.storeEntries[store]?.[item.barcode]||{boh:'',req:''};
       const dis = ro?'disabled':'';
@@ -1766,7 +1775,7 @@ function renderBuyer(){
   sortedCats().forEach(cat=>{
     const actives=cat.items.filter(i=>i.active&&matchFilter(i));
     const col=collapsedBuyer[cat.name];
-    html+=`<tr class="cat-row" onclick="toggleBuyer('${esc(cat.name)}')"><td colspan="15">${col?'▶':'▼'} ${esc(cat.name)}</td></tr>`;
+    html+=`<tr class="cat-row" onclick="poToggleBuyer('${esc(cat.name)}')"><td colspan="15">${col?'▶':'▼'} ${esc(cat.name)}</td></tr>`;
     if(!col) actives.forEach(item=>{
       const un=unitNet(item.ctn,item.pack);
       const gp=calcGP(item.sell,item.ctn,item.pack);
@@ -1816,7 +1825,7 @@ function renderProductMaster(){
   sortedCats().forEach(cat=>{
     const col=collapsedMaster[cat.name];
     html+=`<div class="card mb12">
-      <div style="background:var(--s50);border-bottom:1px solid var(--s200);padding:10px 14px;cursor:pointer;font-weight:600" onclick="toggleMaster('${esc(cat.name)}')">${col?'▶':'▼'} ${esc(cat.name)}</div>`;
+      <div style="background:var(--s50);border-bottom:1px solid var(--s200);padding:10px 14px;cursor:pointer;font-weight:600" onclick="poToggleMaster('${esc(cat.name)}')">${col?'▶':'▼'} ${esc(cat.name)}</div>`;
     if(!col){
       html+=`<div class="table-wrap" style="border:none"><table><thead><tr>
         <th>Barcode</th><th>Description</th><th>Category</th><th>Pack Qty</th><th>Unit</th><th>Display</th><th>Active</th><th></th>
@@ -1835,7 +1844,7 @@ function renderProductMaster(){
           <td><input type="text" style="width:65px" value="${esc(unit)}" onchange="updatePack('${esc(item.barcode)}','${esc(qty)}',this.value)"></td>
           <td style="font-weight:500">${esc(item.pack)}</td>
           <td><input type="checkbox" ${item.active?'checked':''} onchange="updateProdField('${esc(item.barcode)}','active',this.checked)"></td>
-          <td><button class="btn btn-rose btn-sm" onclick="archiveProd('${esc(item.barcode)}')">Archive</button></td>
+          <td><button class="btn btn-rose btn-sm" onclick="poArchive('${esc(item.barcode)}')">Archive</button></td>
         </tr>`;
       });
       html+=`</tbody></table></div>`;
@@ -1906,10 +1915,10 @@ function renderDispatch(){
           <div class="flex gap8 flex-wrap">`;
     if(appRole==='buyer'){
       html+=dStatus==='draft'
-        ?`<button class="btn btn-dark btn-sm" onclick="finaliseDispatch('${esc(store)}')">Finalise</button>`
-        :`<button class="btn btn-outline btn-sm" onclick="reopenDispatch('${esc(store)}')">Reopen</button>`;
-      html+=`<button class="btn btn-dark btn-sm" onclick="togglePrinted('${esc(store)}')">Print</button>
-             <button class="btn btn-outline btn-sm" onclick="toggleEmailed('${esc(store)}')">Email</button>`;
+        ?`<button class="btn btn-dark btn-sm" onclick="poFinalise('${esc(store)}')">Finalise</button>`
+        :`<button class="btn btn-outline btn-sm" onclick="poReopenDisp('${esc(store)}')">Reopen</button>`;
+      html+=`<button class="btn btn-dark btn-sm" onclick="poTogglePrint('${esc(store)}')">Print</button>
+             <button class="btn btn-outline btn-sm" onclick="poToggleEmail('${esc(store)}')">Email</button>`;
     }
     html+=`</div></div></div>
       <div class="table-wrap" style="border:none"><table><thead><tr>
@@ -1947,7 +1956,7 @@ selectRole('store');
 
 
   // Expose functions needed by HTML onclick attributes  
-  window.poTab = poTab || window.showTab;
+  window.poTab = showTab;  // showTab is the produce tab switcher
   window.poSetFilter = setFilter;
   window.poResetCounts = resetStoreCounts;
   window.poSubmitStore = submitStore;
