@@ -366,6 +366,7 @@ tbody tr:hover{background:var(--s50)}
 #panel-produce .cloud-dot.err{background:#e11d48}
 #panel-produce .cloud-dot.busy{background:#f59e0b;animation:pulse 1s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.produce-card{background:var(--white);border:1px solid var(--s200);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;width:100%}
 #panel-produce .hidden{display:none!important}
 #panel-produce .po-buyer-only.hidden{display:none!important}
 #panel-produce .card{max-width:none!important;width:100%!important;text-align:left;border-radius:12px;box-sizing:border-box}
@@ -563,7 +564,7 @@ tbody tr:hover{background:var(--s50)}
           <button class="btn btn-dark btn-sm" onclick="saveToCloud()">Save to Cloud</button>
         </div>
       </div>
-      <div class="login-card">
+      <div class="produce-card">
         <div class="card-body" style="padding-bottom:0">
           <div class="tabs">
             <div class="tab active" onclick="showTab('po-ts')">Store Entry</div>
