@@ -1688,7 +1688,10 @@ function renderProductMaster(){
   sortedCats().forEach(cat=>{
     const col=collapsedMaster[cat.name];
     html+=`<div class="card mb12">
-      <div style="background:var(--s50);border-bottom:1px solid var(--s200);padding:10px 14px;cursor:pointer;font-weight:600" onclick="toggleMaster('${esc(cat.name)}')">${col?'▶':'▼'} ${esc(cat.name)}</div>`;
+      <div style="background:var(--s50);border-bottom:1px solid var(--s200);padding:8px 14px;display:flex;align-items:center;gap:10px">
+        <span style="cursor:pointer;font-weight:600;flex:1" onclick="toggleMaster('${esc(cat.name)}')">${col?'▶':'▼'} ${esc(cat.name)}</span>
+        <input type="text" style="width:160px;font-size:12px;padding:3px 7px;border:1px solid var(--s300);border-radius:6px" value="${esc(cat.name)}" placeholder="Rename category" onchange="renameCat('${esc(cat.name)}',this.value)">
+      </div>`;
     if(!col){
       html+=`<div class="table-wrap" style="border:none"><table><thead><tr>
         <th>Barcode</th><th>Description</th><th>Category</th><th>Pack Qty</th><th>Unit</th><th>Display</th><th>Active</th><th></th>
@@ -1697,11 +1700,10 @@ function renderProductMaster(){
         const parts=item.pack.split(' '); const qty=parts[0]||'1'; const unit=parts[1]||'KG';
         const catOpts=catNames().map(n=>`<option value="${esc(n)}"${n===cat.name?' selected':''}>${esc(n)}</option>`).join('');
         html+=`<tr>
-          <td class="text-slate">${esc(item.barcode)}</td>
+          <td><input type="text" style="width:110px;font-size:12px" value="${esc(item.barcode)}" placeholder="Enter barcode" onchange="updateBarcodeField('${esc(item.barcode)}',this.value)"></td>
           <td><input type="text" style="width:220px" value="${esc(item.desc)}" onchange="updateProdField('${esc(item.barcode)}','desc',this.value)"></td>
           <td>
             <select style="width:140px" onchange="moveProd('${esc(item.barcode)}',this.value)">${catOpts}</select>
-            <div class="mt8"><input type="text" style="width:140px" value="${esc(cat.name)}" placeholder="Rename cat" onchange="renameCat('${esc(cat.name)}',this.value)"></div>
           </td>
           <td><input type="number" style="width:65px" value="${esc(qty)}" onchange="updatePack('${esc(item.barcode)}',this.value,'${esc(unit)}')"></td>
           <td><input type="text" style="width:65px" value="${esc(unit)}" onchange="updatePack('${esc(item.barcode)}','${esc(qty)}',this.value)"></td>
@@ -1717,6 +1719,28 @@ function renderProductMaster(){
   document.getElementById('po-pmContent').innerHTML=html;
 }
 function toggleMaster(name){ collapsedMaster[name]=!collapsedMaster[name]; renderProductMaster(); }
+function updateBarcodeField(oldBarcode, newBarcode){
+  if(!newBarcode.trim() || newBarcode === oldBarcode) return;
+  newBarcode = newBarcode.trim();
+  // Update barcode across all categories
+  po_data.categories.forEach(cat=>{
+    const item = cat.items.find(i=>i.barcode===oldBarcode);
+    if(item) item.barcode = newBarcode;
+  });
+  // Move store entries
+  PO_STORES.forEach(s=>{
+    if(po_data.storeEntries[s] && po_data.storeEntries[s][oldBarcode]){
+      po_data.storeEntries[s][newBarcode] = po_data.storeEntries[s][oldBarcode];
+      delete po_data.storeEntries[s][oldBarcode];
+    }
+  });
+  // Move sent values
+  if(po_data.sentValues && po_data.sentValues[oldBarcode]){
+    po_data.sentValues[newBarcode] = po_data.sentValues[oldBarcode];
+    delete po_data.sentValues[oldBarcode];
+  }
+  renderProductMaster();
+}
 function updateProdField(barcode,field,value){
   po_data.categories=po_data.categories.map(c=>({...c,items:c.items.map(i=>i.barcode===barcode?{...i,[field]:value}:i)}));
   renderProductMaster();
@@ -1735,12 +1759,10 @@ function moveProd(barcode,targetCat){
   renderProductMaster();
 }
 function addProduct(){
-  const newItem={barcode:Date.now().toString(),desc:'New Product',pack:'1 KG',ctn:0,previousCtn:0,sell:0,previousSell:0,active:true};
+  const newItem={barcode:'',desc:'New Product',pack:'1 KG',ctn:0,previousCtn:0,sell:0,previousSell:0,active:true};
   if(!po_data.categories.length) po_data.categories=[{name:'New Category',items:[]}];
   po_data.categories[0]={...po_data.categories[0],items:[...po_data.categories[0].items,newItem]};
-  PO_STORES.forEach(s=>{ if(!po_data.storeEntries[s])po_data.storeEntries[s]={}; po_data.storeEntries[s][newItem.barcode]={boh:'',req:''}; });
-  po_data.sentValues[newItem.barcode]={fbs:'',bl:'',wyl:''};
-  renderProductMaster(); showToast('Product added');
+  renderProductMaster(); showToast('Product added — enter barcode');
 }
 function addCategory(){
   const input=document.getElementById('po-newCat'); const name=input.value.trim();
