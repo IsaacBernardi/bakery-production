@@ -668,7 +668,7 @@ tbody tr:hover{background:var(--s50)}
           </div>
           <div class="table-wrap">
             <table><thead><tr>
-              <th>Barcode</th><th>Product</th>
+              <th>Barcode</th><th>Product</th><th>Requests</th>
               <th>FBS BOH</th><th>FBS Sent</th><th>BL BOH</th><th>BL Sent</th>
               <th>WYL BOH</th><th>WYL Sent</th>
               <th>CTN Cost</th><th>Unit Net</th><th>Sell</th><th>GP%</th>
@@ -692,11 +692,9 @@ tbody tr:hover{background:var(--s50)}
 
   </div>
 </div>
-<div id="sharedToast"></div>
-
+<div id="sharedToast"
 <script>
-
-var BUYER_PIN = '9999';
+var BUYER_PIN = '1234';
 
 function goto(id) {
   document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
@@ -1729,7 +1727,7 @@ function renderBuyer(){
   sortedCats().forEach(cat=>{
     const actives=cat.items.filter(i=>i.active&&matchFilter(i));
     const col=collapsedBuyer[cat.name];
-    html+=`<tr class="cat-row" onclick="toggleBuyer('${esc(cat.name)}')"><td colspan="15">${col?'▶':'▼'} ${esc(cat.name)}</td></tr>`;
+    html+=`<tr class="cat-row" onclick="toggleBuyer('${esc(cat.name)}')"><td colspan="16">${col?'▶':'▼'} ${esc(cat.name)}</td></tr>`;
     if(!col) actives.forEach(item=>{
       const un=unitNet(item.ctn,item.pack);
       const gp=calcGP(item.sell,item.ctn,item.pack);
@@ -1738,8 +1736,11 @@ function renderBuyer(){
       const nsSell=ns===''?item.sell:parseFloat(ns)||item.sell;
       const ncCtn=nc!==''?parseFloat(nc):item.ctn;
       const newGP=ns!==''||nc!==''?calcGP(nsSell,ncCtn,item.pack):gp;
+      // Collect store requests compactly
+      const reqs=PO_STORES.map(s=>{const e=po_data.storeEntries[s]?.[item.barcode]||{};return e.req?`${PO_STORE_SHORT[s]}:${e.req}`:null;}).filter(Boolean).join(' | ');
       html+=`<tr>
         <td class="text-slate">${esc(item.barcode)}</td><td style="font-weight:500">${esc(item.desc)}</td>
+        <td style="font-size:11px;color:var(--s500);white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis" title="${esc(reqs)}">${esc(reqs)||'—'}</td>
         <td>${getBoh('Forbes',item.barcode)}</td>
         <td><input type="number" style="width:65px" value="${esc(po_data.sentValues[item.barcode]?.fbs||'')}" onchange="updateSent('${esc(item.barcode)}','fbs',this.value)"></td>
         <td>${getBoh('Blayney',item.barcode)}</td>
@@ -1885,7 +1886,6 @@ function renderDispatch(){
             <div class="flex gap8 mt8 flex-wrap">
               <span class="badge badge-${dStatus==='finalised'?'blue':'slate'}">Dispatch: ${dStatus}</span>
               <span class="badge badge-${meta.printed?'emerald':'slate'}">Printed: ${meta.printed?'Yes':'No'}</span>
-              <span class="badge badge-${meta.emailed?'emerald':'slate'}">Emailed: ${meta.emailed?'Yes':'No'}</span>
             </div>
           </div>
           <div class="flex gap8 flex-wrap">`;
@@ -1893,8 +1893,7 @@ function renderDispatch(){
       html+=dStatus==='draft'
         ?`<button class="btn btn-dark btn-sm" onclick="finaliseDispatch('${esc(store)}')">Finalise</button>`
         :`<button class="btn btn-outline btn-sm" onclick="reopenDispatch('${esc(store)}')">Reopen</button>`;
-      html+=`<button class="btn btn-dark btn-sm" onclick="togglePrinted('${esc(store)}')">Print</button>
-             <button class="btn btn-outline btn-sm" onclick="toggleEmailed('${esc(store)}')">Email</button>`;
+      html+=`<button class="btn btn-dark btn-sm" onclick="printDispatch('${esc(store)}')">Print</button>`;
     }
     html+=`</div></div></div>
       <div class="table-wrap" style="border:none"><table><thead><tr>
@@ -1922,7 +1921,44 @@ function finaliseDispatch(store){
   showToast(`${store} dispatch finalised — BOH cleared for next cycle`);
 }
 function reopenDispatch(store){ po_data.dispatchStatuses[store]='draft'; renderDispatch(); showToast(`${store} dispatch reopened`); }
-function togglePrinted(store){ po_data.dispatchMeta[store].printed=!po_data.dispatchMeta[store].printed; renderDispatch(); }
+function togglePrinted(store){
+  if(!po_data.dispatchMeta[store]) po_data.dispatchMeta[store]={printed:false,emailed:false};
+  po_data.dispatchMeta[store].printed=!po_data.dispatchMeta[store].printed;
+  saveToCloud(); renderDispatch();
+}
+function printDispatch(store){
+  if(!po_data) return;
+  const key=PO_STORE_KEYS[store];
+  const rows=allActive().filter(i=>getSent(i.barcode,key)>0);
+  const dateStr=new Date().toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  let h=`<div class="ptitle">${esc(store)} Dispatch Sheet`;
+  h+=`<span class="psub">${dateStr}</span></div>`;
+  h+=`<table><thead><tr>`;
+  h+=`<th class="left" style="width:12%">Barcode</th>`;
+  h+=`<th class="left" style="width:52%">Product</th>`;
+  h+=`<th style="width:20%">Qty Sent</th>`;
+  h+=`<th style="width:16%">Pack</th>`;
+  h+=`</tr></thead><tbody>`;
+  if(rows.length){
+    rows.forEach(i=>{
+      h+=`<tr><td class="left" style="font-size:9px">${esc(i.barcode)}</td>`;
+      h+=`<td class="left">${esc(i.desc)}</td>`;
+      h+=`<td style="font-weight:700;font-size:12px">${getSent(i.barcode,key)}</td>`;
+      h+=`<td>${esc(i.pack)}</td></tr>`;
+    });
+  } else {
+    h+=`<tr><td colspan="4" style="text-align:center;padding:20px">No dispatch quantities entered.</td></tr>`;
+  }
+  h+=`</tbody></table>`;
+  document.getElementById('printArea').innerHTML=h;
+  setTimeout(function(){
+    window.print();
+    // Mark as printed after printing
+    if(!po_data.dispatchMeta[store]) po_data.dispatchMeta[store]={printed:false,emailed:false};
+    po_data.dispatchMeta[store].printed=true;
+    saveToCloud(); renderDispatch();
+  },80);
+}
 function toggleEmailed(store){ po_data.dispatchMeta[store].emailed=!po_data.dispatchMeta[store].emailed; renderDispatch(); }
 
 // ═══════════════════════════════════════════
