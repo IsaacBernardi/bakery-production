@@ -554,130 +554,75 @@ tbody tr:hover{background:var(--s50)}
 </div>
   </div>
   <div class="u-panel" id="panel-produce">
-<!-- ═══════════════ LOGIN SCREEN ═══════════════ -->
-<div id="loginScreen">
-  <div class="login-card">
-    <h1>Produce Ordering System</h1>
-    <p>Bernardi's Marketplace</p>
-    <div class="login-role-btns">
-      <button class="role-btn active" id="roleBtnStore" onclick="selectRole('store')">Store Login</button>
-      <button class="role-btn" id="roleBtnBuyer" onclick="selectRole('buyer')">Buyer Login</button>
+    <div class="app-inner">
+      <div class="save-bar">
+        <div class="cloud-bar"><div class="cloud-dot" id="po-dot"></div><span id="po-cloudlbl">Not connected</span></div>
+        <div style="display:flex;gap:8px;align-items:center;flex:1;max-width:400px">
+          <input type="text" id="po-saveLabel" placeholder="e.g. Week 12 — Forbes" style="flex:1;padding:6px 10px;font-size:13px;border:1px solid #e2e8f0;border-radius:8px;font-family:inherit">
+          <button class="btn btn-dark btn-sm" onclick="poSave()">Save to Cloud</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-body" style="padding-bottom:0">
+          <div class="tabs">
+            <div class="tab active" onclick="poTab('po-ts')">Store Entry</div>
+            <div class="tab po-buyer-only hidden" onclick="poTab('po-tb')">Buyer Dashboard</div>
+            <div class="tab po-buyer-only hidden" onclick="poTab('po-tp')">Product Master</div>
+            <div class="tab" onclick="poTab('po-td')">Dispatch Sheet</div>
+          </div>
+        </div>
+        <div id="po-ts" class="tab-content active card-body" style="padding-top:4px">
+          <div class="toolbar" id="po-storeBar"></div>
+          <div id="po-roAlert" class="alert alert-amber mb12 hidden">Read-only after submit or lock.</div>
+          <div id="po-seTable"></div>
+        </div>
+        <div id="po-tb" class="tab-content card-body" style="padding-top:4px">
+          <div class="grid4 mb16">
+            <div class="stat-box"><label>Product Total</label><div class="stat-value" id="po-sPT">$0.00</div></div>
+            <div class="stat-box"><label>Market Cost ($)</label><input type="number" id="po-mktTotal" value="12" style="width:100%" oninput="poRecalc()"></div>
+            <div class="stat-box"><label>Transport ($)</label><input type="number" id="po-trTotal" value="8" style="width:100%" oninput="poRecalc()"></div>
+            <div class="stat-box"><label>Oncost %</label><div class="stat-value" id="po-sOnc">0.00%</div></div>
+          </div>
+          <div class="flex gap8 flex-wrap mb12">
+            <button class="btn btn-blue btn-sm" onclick="poApplyCost()">Apply Cost Changes</button>
+            <button class="btn btn-emerald btn-sm" onclick="poApplyPrice()">Apply Price Changes</button>
+          </div>
+          <div class="grid3 mb16">
+            <div class="stat-box"><label>Est. Retail Value</label><div class="stat-value" id="po-sRet">$0.00</div></div>
+            <div class="stat-box"><label>Est. Net Cost</label><div class="stat-value" id="po-sNet">$0.00</div></div>
+            <div class="stat-box"><label>Average GP</label><div class="stat-value" id="po-sGP">0.0%</div></div>
+          </div>
+          <div class="pill-group mb16">
+            <button class="pill active" onclick="poSetFilter('all')">Show All</button>
+            <button class="pill" onclick="poSetFilter('shortages')">Shortages</button>
+            <button class="pill" onclick="poSetFilter('dispatch')">Dispatch Lines</button>
+            <button class="pill" onclick="poSetFilter('low_gp')">Low GP</button>
+            <button class="pill" onclick="poSetFilter('high_gp')">High GP</button>
+          </div>
+          <div class="table-wrap">
+            <table><thead><tr>
+              <th>Barcode</th><th>Product</th>
+              <th>FBS BOH</th><th>FBS Sent</th><th>BL BOH</th><th>BL Sent</th>
+              <th>WYL BOH</th><th>WYL Sent</th>
+              <th>CTN Cost</th><th>Unit Net</th><th>Sell</th><th>GP%</th>
+              <th>New Cost</th><th>New Sell</th><th>New GP%</th>
+            </tr></thead><tbody id="po-bTbody"></tbody></table>
+          </div>
+        </div>
+        <div id="po-tp" class="tab-content card-body" style="padding-top:4px">
+          <div class="flex gap8 flex-wrap mb16">
+            <button class="btn btn-blue btn-sm" onclick="poAddProduct()">+ Add Product</button>
+            <input type="text" id="po-newCat" placeholder="New category name" style="width:200px">
+            <button class="btn btn-outline btn-sm" onclick="poAddCat()">+ Add Category</button>
+          </div>
+          <div id="po-pmContent"></div>
+        </div>
+        <div id="po-td" class="tab-content card-body" style="padding-top:4px">
+          <div id="po-dispContent"></div>
+        </div>
+      </div>
     </div>
-    <!-- Store buttons -->
-    <div id="storeButtons" class="store-pick-btns">
-      <button class="store-pick-btn" onclick="loginStore('Forbes')">Forbes</button>
-      <button class="store-pick-btn" onclick="loginStore('Blayney')">Blayney</button>
-      <button class="store-pick-btn" onclick="loginStore('West Wyalong')">West Wyalong</button>
-    </div>
-    <!-- Buyer PIN -->
-    <div id="buyerPinSection" class="pin-field hidden">
-      <label>Buyer PIN</label>
-      <input type="password" id="pinInput" placeholder="••••" maxlength="6" onkeydown="if(event.key==='Enter')loginBuyer()">
-      <button class="login-btn" onclick="loginBuyer()">Continue</button>
-    </div>
-    <div class="login-err" id="loginErr"></div>
-  </div>
-</div>
 
-<!-- ═══════════════ APP SCREEN ═══════════════ -->
-<div id="appScreen">
-  <div class="app">
-
-    <!-- Header -->
-    <div class="header">
-      <div>
-        <h1>Produce Ordering System</h1>
-        <div class="text-sm text-slate mt8" id="cycleInfo">Tuesday cycle • Cutoff 5:00 PM</div>
-      </div>
-      <div class="header-right">
-        <div class="cloud-bar">
-          <div class="cloud-dot" id="cloudDot"></div>
-          <span id="cloudStatus">Not connected</span>
-        </div>
-        <span class="store-chip" id="storeChip"></span>
-        <button class="btn btn-outline btn-sm" onclick="poSave()">Save to Cloud</button>
-        <button class="switch-btn" onclick="doLogout()">Switch</button>
-      </div>
-    </div>
-
-    <!-- Main card with tabs -->
-    <div class="card">
-      <div class="card-body" style="padding-bottom:0">
-        <div class="tabs" id="mainTabs">
-          <div class="tab active" onclick="poTab('tab-store')">Store Entry</div>
-          <div class="tab buyer-only hidden" onclick="poTab('tab-buyer')">Buyer Dashboard</div>
-          <div class="tab buyer-only hidden" onclick="poTab('tab-products')">Product Master</div>
-          <div class="tab" onclick="poTab('tab-dispatch')">Dispatch Sheet</div>
-        </div>
-      </div>
-
-      <!-- STORE ENTRY -->
-      <div id="tab-store" class="tab-content active card-body" style="padding-top:4px">
-        <div class="toolbar" id="storeToolbar"></div>
-        <div id="storeReadOnlyAlert" class="alert alert-amber mb12 hidden">Read-only after submit or lock. Buyer can override.</div>
-        <div id="storeEntryTable"></div>
-      </div>
-
-      <!-- BUYER DASHBOARD -->
-      <div id="tab-buyer" class="tab-content card-body" style="padding-top:4px">
-        <div class="grid4 mb16">
-          <div class="stat-box"><label>Product Total</label><div class="stat-value" id="statProductTotal">$0.00</div></div>
-          <div class="stat-box"><label>Market Cost ($)</label><input type="number" id="marketTotal" value="12" style="width:100%" oninput="recalc()"></div>
-          <div class="stat-box"><label>Transport ($)</label><input type="number" id="transportTotal" value="8" style="width:100%" oninput="recalc()"></div>
-          <div class="stat-box"><label>Oncost %</label><div class="stat-value" id="statOncost">0.00%</div></div>
-        </div>
-        <div class="flex gap8 flex-wrap mb12">
-          <button class="btn btn-blue btn-sm" onclick="poApplyCost()">Apply Cost Changes</button>
-          <button class="btn btn-emerald btn-sm" onclick="poApplyPrice()">Apply Price Changes</button>
-        </div>
-        <div class="grid3 mb16">
-          <div class="stat-box"><label>Est. Retail Value</label><div class="stat-value" id="statRetail">$0.00</div></div>
-          <div class="stat-box"><label>Est. Net Cost</label><div class="stat-value" id="statNetCost">$0.00</div></div>
-          <div class="stat-box"><label>Average GP</label><div class="stat-value" id="statGP">0.0%</div></div>
-        </div>
-        <div class="pill-group mb16">
-          <button class="pill active" onclick="poSetFilter('all')">Show All</button>
-          <button class="pill" onclick="poSetFilter('shortages')">Shortages</button>
-          <button class="pill" onclick="poSetFilter('dispatch')">Dispatch Lines</button>
-          <button class="pill" onclick="poSetFilter('low_gp')">Low GP</button>
-          <button class="pill" onclick="poSetFilter('high_gp')">High GP</button>
-        </div>
-        <div class="table-wrap">
-          <table><thead><tr>
-            <th>Barcode</th><th>Product</th>
-            <th>FBS BOH</th><th>FBS Sent</th>
-            <th>BL BOH</th><th>BL Sent</th>
-            <th>WYL BOH</th><th>WYL Sent</th>
-            <th>CTN Cost</th><th>Unit Net</th>
-            <th>Sell</th><th>GP%</th>
-            <th>New Cost</th><th>New Sell</th><th>New GP%</th>
-          </tr></thead><tbody id="buyerTbody"></tbody></table>
-        </div>
-      </div>
-
-      <!-- PRODUCT MASTER -->
-      <div id="tab-products" class="tab-content card-body" style="padding-top:4px">
-        <div class="flex gap8 flex-wrap mb16">
-          <button class="btn btn-blue btn-sm" onclick="addProduct()">+ Add Product</button>
-          <input type="text" id="newCatName" placeholder="New category name" style="width:200px">
-          <button class="btn btn-outline btn-sm" onclick="poAddCat()">+ Add Category</button>
-        </div>
-        <div id="productMasterContent"></div>
-      </div>
-
-      <!-- DISPATCH SHEET -->
-      <div id="tab-dispatch" class="tab-content card-body" style="padding-top:4px">
-        <div id="dispatchContent"></div>
-      </div>
-
-    </div><!-- end main card -->
-  </div><!-- end app -->
-</div><!-- end appScreen -->
-
-<div class="toast" id="toast"></div>
-
-
-  </div>
 </div>
 <div id="sharedToast"></div>
 <div id="printArea" style="display:none"></div>
@@ -1985,14 +1930,15 @@ selectRole('store');
   window.poRecalc = recalcDashboard;
   
   // Expose init function for unified shell to call after login
+  window.renderStoreEntry = renderStoreEntry;
   window.poInit = function(role, store) {
     poAppRole = role;
     poAppStore = store;
     loadFromCloud().then(function() {
       var mt = document.getElementById('po-mktTotal');
-      if (mt) mt.value = data.marketTotal || 12;
+      if (mt) mt.value = (poData && poData.marketTotal) || 12;
       var tt = document.getElementById('po-trTotal');
-      if (tt) tt.value = data.transportTotal || 8;
+      if (tt) tt.value = (poData && poData.transportTotal) || 8;
       renderStoreEntry();
     });
     document.querySelectorAll('.po-buyer-only').forEach(function(el) {
