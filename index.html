@@ -488,7 +488,10 @@ td.bake.zero{color:#bbb;font-weight:400}
 
       <!-- Mobile toolbar -->
       <div class="mob-toolbar">
-        <button class="btn" style="font-size:11px;padding:5px 10px" onclick="saveOrder()">Save</button>
+        <div style="width:100%;display:flex;gap:6px;align-items:center;margin-bottom:4px">
+          <input type="text" id="mobOrderLabel" placeholder="Save name..." style="flex:1;padding:5px 8px;font-size:12px;border:1px solid #ddd;border-radius:7px;font-family:inherit">
+          <button class="btn" style="font-size:11px;padding:5px 10px;white-space:nowrap" onclick="mobSaveOrder()">Save</button>
+        </div>
         <button class="btn btn-history" style="font-size:11px;padding:5px 10px" onclick="openHistory()">History</button>
         <button class="btn" style="font-size:11px;padding:5px 10px" onclick="handlePrint()">Print</button>
         <button class="btn" style="font-size:11px;padding:5px 10px" onclick="resetSOH()">Reset SOH</button>
@@ -526,7 +529,10 @@ td.bake.zero{color:#bbb;font-weight:400}
     <div class="app-inner">
       <div class="save-bar">
         <div class="cloud-bar"><div class="cloud-dot" id="po-dot"></div><span id="po-cloudlbl">Not connected</span></div>
-        <button class="btn btn-dark btn-sm" onclick="poSave()">Save to Cloud</button>
+        <div style="display:flex;gap:8px;align-items:center;flex:1;max-width:400px">
+          <input type="text" id="po-saveLabel" placeholder="e.g. Week 12 — Forbes" style="flex:1;padding:6px 10px;font-size:13px;border:1px solid #e2e8f0;border-radius:8px;font-family:inherit">
+          <button class="btn btn-dark btn-sm" onclick="poSave()">Save to Cloud</button>
+        </div>
       </div>
       <div class="card">
         <div class="card-body" style="padding-bottom:0">
@@ -635,6 +641,14 @@ function loginProduce(role, store) {
   poAppStore = store;
   var chip = (role === 'buyer') ? 'Buyer' : 'Store: ' + store;
   launchApp('produce', chip);
+  // Set default save label
+  setTimeout(function() {
+    var sl = document.getElementById('po-saveLabel');
+    if (sl && !sl.value) {
+      var d = new Date().toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+      sl.value = (role === 'buyer' ? 'Buyer' : store) + ' — ' + d;
+    }
+  }, 100);
   document.querySelectorAll('.po-buyer-only').forEach(function(el) {
     el.classList.toggle('hidden', role !== 'buyer');
   });
@@ -770,14 +784,14 @@ function pickStore(code){
 function doLogin(){
   const sel = document.getElementById('storeSelect');
   const code = sel ? sel.value : '';
-  if(!code){document.getElementById('loginErr').textContent='Please select your store.';document.getElementById('loginErr').style.display='block';return;}
+  // [removed: loginErr no longer in DOM] if(!code){document.getElementById('loginErr').textContent='Please select your store.';document.getElementById('loginErr').style.display='block';return;}
   pickStore(code);
 }
 
 function showApp(code){
-  document.getElementById('loginScreen').style.display='none';
-  document.getElementById('menuScreen').style.display='flex';
-  document.getElementById('menuStoreName').textContent=code;
+  // [removed: loginScreen no longer in DOM] document.getElementById('loginScreen').style.display='none';
+  // [removed: menuScreen no longer in DOM] document.getElementById('menuScreen').style.display='flex';
+  // [removed: menuStoreName no longer in DOM] document.getElementById('menuStoreName').textContent=code;
 }
 
 function openApp(which){
@@ -788,10 +802,10 @@ function openApp(which){
     return;
   }
   // Daily production sheet
-  document.getElementById('menuScreen').style.display='none';
-  document.getElementById('appHeader').style.display='flex';
+  // [removed: menuScreen no longer in DOM] document.getElementById('menuScreen').style.display='none';
+  // [removed: appHeader no longer in DOM] document.getElementById('appHeader').style.display='flex';
   document.getElementById('appContent').style.display='block';
-  document.getElementById('storeChip').textContent='Store: '+currentStoreCode;
+  document.getElementById('userChip').textContent='Store: '+currentStoreCode;
   // Set default save label to store + today's date
   const lbl=document.getElementById('orderLabel');
   if(lbl&&!lbl.value)lbl.value=defaultSaveLabel(currentStoreCode);
@@ -810,9 +824,9 @@ function switchStore(){
     fresh.onchange=function(){handleFile(this);};
     old.parentNode.replaceChild(fresh,old);
   }
-  document.getElementById('menuScreen').style.display='none';
-  document.getElementById('loginScreen').style.display='flex';
-  document.getElementById('appHeader').style.display='none';
+  // [removed: menuScreen no longer in DOM] document.getElementById('menuScreen').style.display='none';
+  // [removed: loginScreen no longer in DOM] document.getElementById('loginScreen').style.display='flex';
+  // [removed: appHeader no longer in DOM] document.getElementById('appHeader').style.display='none';
   document.getElementById('appContent').style.display='none';
   document.getElementById('mainContent').style.display='none';
   document.getElementById('dropZone').style.display='block';
@@ -821,7 +835,7 @@ function switchStore(){
   document.getElementById('mobileList').innerHTML='';
   const lbl=document.getElementById('orderLabel');if(lbl)lbl.value='';
   const sel=document.getElementById('storeSelect');if(sel)sel.value='';
-  document.getElementById('loginErr').style.display='none';
+  // [removed: loginErr no longer in DOM] document.getElementById('loginErr').style.display='none';
 }
 
 // [auto-login handled by unified shell]
@@ -1202,7 +1216,7 @@ function restoreSnapshot(snap){
 
 // ══ HISTORY ══════════════════════════════════════════
 async function openHistory(){
-  document.getElementById('historyStoreLabel').textContent=currentStoreCode;
+  var _hsl=document.getElementById('historyStoreLabel');if(_hsl)_hsl.textContent=currentStoreCode;
   document.getElementById('historyModal').classList.add('open');
   const body=document.getElementById('historyBody');
   body.innerHTML='<div class="history-loading">Loading history...</div>';
@@ -1467,6 +1481,9 @@ async function poSaveCloud() {
   // sync UI inputs back
   poData.marketTotal = parseFloat(document.getElementById('po-mktTotal')?.value)||poData.marketTotal||12;
   poData.transportTotal = parseFloat(document.getElementById('po-trTotal')?.value)||poData.transportTotal||8;
+  // Get label from input
+  var poLabel = document.getElementById('po-saveLabel');
+  if (poLabel && poLabel.value.trim()) poData.label = poLabel.value.trim();
   try {
     const res = await fetch(`${PO_BLOB}/${PO_CURRENT_BLOB}?${PO_SAS}`, {
       method:'PUT',
@@ -1500,52 +1517,15 @@ async function poSave() {
 // ═══════════════════════════════════════════
 // LOGIN
 // ═══════════════════════════════════════════
-let loginRole = 'store';
-function poRole(role) {
-  loginRole = role;
-  document.getElementById('po-rbStore').className = 'role-btn'+(role==='store'?' active':'');
-  document.getElementById('po-rbBuyer').className = 'role-btn'+(role==='buyer'?' active':'');
-  document.getElementById('po-storeBtns').className = 'store-pick-btns'+(role==='store'?'':' hidden');
-  document.getElementById('po-pinSec').className = 'pin-field'+(role==='buyer'?'':' hidden');
-  document.getElementById('po-err').style.display = 'none';
-}
-function poLoginStore(store) {
-  appRole = 'store'; appStore = store;
-  poStartApp();
-}
-function poLoginBuyer() {
-  const pin = document.getElementById('po-pin').value;
-  if (pin !== BUYER_PIN) {
-    const err = document.getElementById('po-err');
-    err.textContent = 'Incorrect PIN. Please try again.';
-    err.style.display = 'block';
-    document.getElementById('po-pin').value = '';
-    return;
-  }
-  appRole = 'buyer'; appStore = 'Forbes';
-  poStartApp();
-}
-async function poStartApp() {
-  document.getElementById('po-login').style.display = 'none';
-  document.getElementById('po-app').style.display = 'block';
-  document.getElementById('po-chip').textContent = appRole==='buyer' ? 'Buyer' : 'Store: '+appStore;
-  // Show/hide buyer tabs
-  document.querySelectorAll('.buyer-only').forEach(el => el.classList.toggle('hidden', appRole!=='buyer'));
-  await poLoadCloud();
-  // sync market/transport to UI
-  if (document.getElementById('po-mktTotal')) document.getElementById('po-mktTotal').value = poData.marketTotal||12;
-  if (document.getElementById('po-trTotal')) document.getElementById('po-trTotal').value = poData.transportTotal||8;
-  poTab('tab-store');
-  poRenderSE();
-}
-function poLogout() {
-  document.getElementById('po-login').style.display = 'flex';
-  document.getElementById('po-app').style.display = 'none';
-  document.getElementById('po-pin').value = '';
-  document.getElementById('po-err').style.display = 'none';
-  poRole('store');
-  poTab('tab-store');
-}
+// [poRole removed - handled by unified shell]
+
+// [poLoginStore removed - handled by unified shell]
+
+// [poLoginBuyer removed - handled by unified shell]
+
+// [poStartApp removed - handled by unified shell]
+
+// [poLogout removed - handled by doLogout in unified shell]
 
 // ═══════════════════════════════════════════
 // HELPERS
@@ -1868,10 +1848,7 @@ function poReopenDisp(store){ poData.dispatchStatuses[store]='draft'; poRenderDi
 function poTogglePrint(store){ poData.dispatchMeta[store].printed=!poData.dispatchMeta[store].printed; poRenderDispatch(); }
 function poToggleEmail(store){ poData.dispatchMeta[store].emailed=!poData.dispatchMeta[store].emailed; poRenderDispatch(); }
 
-// ═══════════════════════════════════════════
-// INIT
-// ═══════════════════════════════════════════
-poRole('store');
+// [INIT: handled by unified shell]
 
 
 async function poSave() { await poSaveCloud(); }
