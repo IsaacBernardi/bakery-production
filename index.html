@@ -1466,8 +1466,8 @@ function buildCats() {
 // AZURE BLOB STORAGE
 // ═══════════════════════════════════════════
 function setCloud(state, msg) {
-  const dot = document.getElementById('cloudDot');
-  const lbl = document.getElementById('cloudStatus');
+  const dot = document.getElementById('po-dot');
+  const lbl = document.getElementById('po-cloudlbl');
   dot.className = 'cloud-dot ' + state;
   lbl.textContent = msg;
 }
@@ -1490,6 +1490,9 @@ async function loadFromCloud() {
 }
 async function saveToCloud() {
   setCloud('busy','Saving...');
+  // Get save label from input
+  const labelEl = document.getElementById('po-saveLabel');
+  const saveLabel = labelEl && labelEl.value.trim() ? labelEl.value.trim() : null;
   // sync UI inputs back
   data.marketTotal = parseFloat(document.getElementById('marketTotal')?.value)||data.marketTotal||12;
   data.transportTotal = parseFloat(document.getElementById('transportTotal')?.value)||data.transportTotal||8;
@@ -1529,11 +1532,11 @@ async function handleSave() {
 let loginRole = 'store';
 function selectRole(role) {
   loginRole = role;
-  document.getElementById('roleBtnStore').className = 'role-btn'+(role==='store'?' active':'');
-  document.getElementById('roleBtnBuyer').className = 'role-btn'+(role==='buyer'?' active':'');
-  document.getElementById('storeButtons').className = 'store-pick-btns'+(role==='store'?'':' hidden');
-  document.getElementById('buyerPinSection').className = 'pin-field'+(role==='buyer'?'':' hidden');
-  document.getElementById('loginErr').style.display = 'none';
+  (document.getElementById('roleBtnStore') || {}).className = 'role-btn'+(role==='store'?' active':'');
+  (document.getElementById('roleBtnBuyer') || {}).className = 'role-btn'+(role==='buyer'?' active':'');
+  (document.getElementById('storeButtons') || {}).className = 'store-pick-btns'+(role==='store'?'':' hidden');
+  (document.getElementById('buyerPinSection') || {}).className = 'pin-field'+(role==='buyer'?'':' hidden');
+  (document.getElementById('loginErr') || {}).style.display = 'none';
 }
 function loginStore(store) {
   appRole = 'store'; appStore = store;
@@ -1553,7 +1556,7 @@ function loginBuyer() {
 }
 async function startApp() {
   // [handled by unified shell]
-  document.getElementById('appScreen').style.display = 'block';
+  (document.getElementById('appScreen') || {}).style.display = 'block';
   var _chip=document.getElementById('userChip');if(_chip)_chip.textContent=appRole==='buyer'?'Buyer':'Store: '+appStore;
   // Show/hide buyer tabs
   document.querySelectorAll('.buyer-only').forEach(el => el.classList.toggle('hidden', appRole!=='buyer'));
@@ -1566,9 +1569,9 @@ async function startApp() {
 }
 function doLogout() {
   // [handled by unified shell]
-  document.getElementById('appScreen').style.display = 'none';
+  (document.getElementById('appScreen') || {}).style.display = 'none';
   document.getElementById('pinInput').value = '';
-  document.getElementById('loginErr').style.display = 'none';
+  (document.getElementById('loginErr') || {}).style.display = 'none';
   selectRole('store');
   showTab('tab-store');
 }
@@ -1590,7 +1593,7 @@ function getSent(b,k){ return parseFloat(data.sentValues[b]?.[k]||0)||0; }
 function getBoh(store,b){ return parseFloat(data.storeEntries[store]?.[b]?.boh||0)||0; }
 function statusTone(s){ return s==='submitted'?'blue':s==='locked'?'rose':'slate'; }
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function showToast(msg, dur=2500) { const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),dur); }
+function showToast(msg, dur=2500) { const t=document.getElementById('sharedToast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),dur); }
 function sortedCats(){ return [...data.categories].sort((a,b)=>a.name.localeCompare(b.name)).map(c=>({...c,items:[...c.items].sort((a,b)=>a.desc.localeCompare(b.desc))})); }
 function catNames(){ return sortedCats().map(c=>c.name); }
 function effectiveStore(){ return appStore; }
@@ -1635,8 +1638,8 @@ function renderStoreEntry() {
     toolbar += `<button class="btn btn-rose btn-sm" onclick="poLockStore()">Lock Store</button>`;
   }
   toolbar += `<span class="text-xs text-slate">Last reset: ${esc(data.lastReset)}</span>`;
-  document.getElementById('storeToolbar').innerHTML = toolbar;
-  document.getElementById('storeReadOnlyAlert').className = 'alert alert-amber mb12'+(ro?'':' hidden');
+  document.getElementById('po-storeBar').innerHTML = toolbar;
+  document.getElementById('po-roAlert').className = 'alert alert-amber mb12'+(ro?'':' hidden');
 
   // Table
   let html = '<div class="table-wrap"><table><thead><tr><th>Barcode</th><th>Product</th><th>Pack</th><th>BOH (ctns)</th><th>Customer Request</th></tr></thead><tbody>';
@@ -1654,7 +1657,7 @@ function renderStoreEntry() {
     });
   });
   html += '</tbody></table></div>';
-  document.getElementById('storeEntryTable').innerHTML = html;
+  document.getElementById('po-seTable').innerHTML = html;
 }
 function toggleSE(name){ collapsedSE[name]=!collapsedSE[name]; renderStoreEntry(); }
 function setActiveStore(store){ appStore=store; renderStoreEntry(); }
@@ -1683,17 +1686,17 @@ function recalc(){
   if(!data)return;
   const items=allActive();
   const total=items.reduce((s,i)=>s+i.ctn,0);
-  document.getElementById('statProductTotal').textContent='$'+total.toFixed(2);
+  document.getElementById('po-sPT').textContent='$'+total.toFixed(2);
   const onc=oncostFrac();
-  document.getElementById('statOncost').textContent=(onc*100).toFixed(2)+'%';
+  document.getElementById('po-sOnc').textContent=(onc*100).toFixed(2)+'%';
   let retail=0,netCost=0,gpSum=0;
   items.forEach(i=>{
     const ts=getSent(i.barcode,'fbs')+getSent(i.barcode,'bl')+getSent(i.barcode,'wyl');
     retail+=i.sell*ts; netCost+=i.ctn*(1+onc)*ts; gpSum+=calcGP(i.sell,i.ctn,i.pack);
   });
-  document.getElementById('statRetail').textContent='$'+retail.toFixed(2);
-  document.getElementById('statNetCost').textContent='$'+netCost.toFixed(2);
-  document.getElementById('statGP').textContent=(items.length?(gpSum/items.length).toFixed(1):'0.0')+'%';
+  document.getElementById('po-sRet').textContent='$'+retail.toFixed(2);
+  document.getElementById('po-sNet').textContent='$'+netCost.toFixed(2);
+  document.getElementById('po-sGP').textContent=(items.length?(gpSum/items.length).toFixed(1):'0.0')+'%';
 }
 function setFilter(f){
   activeFilter=f;
@@ -1745,7 +1748,7 @@ function renderBuyer(){
       </tr>`;
     });
   });
-  document.getElementById('buyerTbody').innerHTML=html;
+  document.getElementById('po-bTbody').innerHTML=html;
 }
 function toggleBuyer(name){ collapsedBuyer[name]=!collapsedBuyer[name]; renderBuyer(); }
 function updateSent(b,k,v){ if(!data.sentValues[b])data.sentValues[b]={fbs:'',bl:'',wyl:''}; data.sentValues[b][k]=v; recalc(); }
@@ -1796,7 +1799,7 @@ function renderProductMaster(){
     }
     html+=`</div>`;
   });
-  document.getElementById('productMasterContent').innerHTML=html;
+  document.getElementById('po-pmContent').innerHTML=html;
 }
 function toggleMaster(name){ collapsedMaster[name]=!collapsedMaster[name]; renderProductMaster(); }
 function updateProdField(barcode,field,value){
@@ -1825,7 +1828,7 @@ function addProduct(){
   renderProductMaster(); showToast('Product added');
 }
 function addCategory(){
-  const input=document.getElementById('newCatName'); const name=input.value.trim();
+  const input=document.getElementById('po-newCat'); const name=input.value.trim();
   if(!name)return;
   if(data.categories.some(c=>c.name.toLowerCase()===name.toLowerCase())){ showToast('Category already exists'); return; }
   data.categories.push({name,items:[]}); input.value='';
@@ -1876,7 +1879,7 @@ function renderDispatch(){
     }
     html+=`</tbody></table></div></div>`;
   });
-  document.getElementById('dispatchContent').innerHTML=html;
+  document.getElementById('po-dispContent').innerHTML=html;
 }
 function finaliseDispatch(store){
   data.dispatchStatuses[store]='finalised';
@@ -1932,13 +1935,16 @@ selectRole('store');
   // Expose init function for unified shell to call after login
   window.renderStoreEntry = renderStoreEntry;
   window.poInit = function(role, store) {
+    // Set the IIFE's internal variables directly
+    appRole = role;
+    appStore = store;
     poAppRole = role;
     poAppStore = store;
     loadFromCloud().then(function() {
       var mt = document.getElementById('po-mktTotal');
-      if (mt) mt.value = (poData && poData.marketTotal) || 12;
+      if (mt) mt.value = (data && data.marketTotal) || 12;
       var tt = document.getElementById('po-trTotal');
-      if (tt) tt.value = (poData && poData.transportTotal) || 8;
+      if (tt) tt.value = (data && data.transportTotal) || 8;
       renderStoreEntry();
     });
     document.querySelectorAll('.po-buyer-only').forEach(function(el) {
@@ -1947,7 +1953,9 @@ selectRole('store');
   };
   
   window.poSetStore = function(store) {
-    poAppRole = window._poRole || 'store';
+    appRole = window._poRole || 'store';
+    appStore = store;
+    poAppRole = appRole;
     poAppStore = store;
     renderStoreEntry();
   };
