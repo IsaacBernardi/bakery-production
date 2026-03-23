@@ -435,7 +435,10 @@ td.bake.zero{color:#bbb;font-weight:400}
 
       <!-- Mobile toolbar -->
       <div class="mob-toolbar">
-        <button class="btn" style="font-size:11px;padding:5px 10px" onclick="saveOrder()">Save</button>
+        <div style="width:100%;display:flex;gap:6px;align-items:center;margin-bottom:6px">
+          <input type="text" id="mobOrderLabel" placeholder="Save name..." style="flex:1;padding:5px 8px;font-size:12px;border:1px solid #ddd;border-radius:7px;font-family:inherit">
+          <button class="btn" style="font-size:11px;padding:5px 10px;white-space:nowrap" onclick="mobSaveOrder()">Save</button>
+        </div>
         <button class="btn btn-history" style="font-size:11px;padding:5px 10px" onclick="openHistory()">History</button>
         <button class="btn" style="font-size:11px;padding:5px 10px" onclick="handlePrint()">Print</button>
         <button class="btn" style="font-size:11px;padding:5px 10px" onclick="resetSOH()">Reset SOH</button>
@@ -540,19 +543,41 @@ td.bake.zero{color:#bbb;font-weight:400}
 <div id="printArea" style="display:none"></div>
 <script>
 
-// EVENT DELEGATION - replaces inline onclick for sandbox compatibility
-document.addEventListener('click', function(e) {
-  var el = e.target.closest('[data-onclick]');
-  if (!el) return;
-  var fn = el.getAttribute('data-onclick');
-  try { eval(fn); } catch(err) { console.error('onclick error:', fn, err); }
-});
-document.addEventListener('keydown', function(e) {
-  var el = e.target.closest('[data-onkeydown]');
-  if (!el) return;
-  var fn = el.getAttribute('data-onkeydown');
-  try { eval(fn); } catch(err) { console.error('onkeydown error:', fn, err); }
-});
+// BUTTON WIRING - safe no-eval approach
+function wireButtons() {
+  var map = {
+    "uSelectApp('bakery')":         function() { uSelectApp('bakery'); },
+    "uSelectApp('produce')":        function() { uSelectApp('produce'); },
+    "uLoginBakery('FORBES')":       function() { uLoginBakery('FORBES'); },
+    "uLoginBakery('BLAYNEY')":      function() { uLoginBakery('BLAYNEY'); },
+    "uLoginBakery('BATHURST')":     function() { uLoginBakery('BATHURST'); },
+    "uLoginBakery('WYALONG')":      function() { uLoginBakery('WYALONG'); },
+    "uGoBack()":                    function() { uGoBack(); },
+    "uLoginProduce('store','Forbes')":       function() { uLoginProduce('store','Forbes'); },
+    "uLoginProduce('store','Blayney')":      function() { uLoginProduce('store','Blayney'); },
+    "uLoginProduce('store','West Wyalong')": function() { uLoginProduce('store','West Wyalong'); },
+    "uShowPin()":                   function() { uShowPin(); },
+    "uShowPin(false)":              function() { uShowPin(false); },
+    "uLoginBuyer()":                function() { uLoginBuyer(); },
+    "uSwitchPanel('bakery')":       function() { uSwitchPanel('bakery'); },
+    "uSwitchPanel('produce')":      function() { uSwitchPanel('produce'); },
+    "uLogout()":                    function() { uLogout(); }
+  };
+  document.querySelectorAll('[data-onclick]').forEach(function(el) {
+    var key = el.getAttribute('data-onclick');
+    if (map[key]) {
+      el.addEventListener('click', map[key]);
+    }
+  });
+  // Wire PIN input enter key
+  var pin = document.getElementById('uPinInput');
+  if (pin) {
+    pin.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') uLoginBuyer();
+    });
+  }
+}
+document.addEventListener('DOMContentLoaded', wireButtons);
 
 // SHARED
 function showToast(msg, dur) {
@@ -670,6 +695,8 @@ function showApp(code) {
   document.getElementById('uChip').textContent = 'Store: ' + code;
   var lbl = document.getElementById('orderLabel');
   if (lbl && !lbl.value) lbl.value = defaultSaveLabel(code);
+  var mob = document.getElementById('mobOrderLabel');
+  if (mob && !mob.value) mob.value = defaultSaveLabel(code);
 }
 function switchStore() { /* handled by uLogout */ }
 
@@ -1065,6 +1092,13 @@ function saveOrder(){
   const label=document.getElementById('orderLabel')?.value.trim()||
     (currentStoreCode||'Store')+' — '+new Date().toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'});
   saveToBlob(label);
+}
+function mobSaveOrder(){
+  // Sync mob label to desktop label then save
+  const mob=document.getElementById('mobOrderLabel');
+  const desk=document.getElementById('orderLabel');
+  if(mob&&mob.value.trim()&&desk) desk.value=mob.value.trim();
+  saveOrder();
 }
 
 function exportCSV(){
