@@ -680,6 +680,7 @@ tbody tr:hover{background:var(--s50)}
         <div id="po-tp" class="tab-content card-body" style="padding-top:4px">
           <div class="flex gap8 flex-wrap mb16">
             <button class="btn btn-blue btn-sm" onclick="addProduct()">+ Add Product</button>
+            <button class="btn btn-outline btn-sm" onclick="importProducts()">&#x1F4C2; Import Excel</button>
             <input type="text" id="po-newCat" placeholder="New category name" style="width:200px">
             <button class="btn btn-outline btn-sm" onclick="addCategory()">+ Add Category</button>
           </div>
@@ -1934,7 +1935,10 @@ function renderProductMaster(){
           <td><input type="text" style="width:65px" value="${esc(unit)}" onchange="updatePack('${esc(item.barcode)}','${esc(qty)}',this.value)"></td>
           <td style="font-weight:500">${esc(item.pack)}</td>
           <td><input type="checkbox" ${item.active?'checked':''} onchange="updateProdField('${esc(item.barcode)}','active',this.checked)"></td>
-          <td><button class="btn btn-rose btn-sm" onclick="archiveProd('${esc(item.barcode)}')">Archive</button></td>
+          <td style="white-space:nowrap">
+            <button class="btn btn-rose btn-sm" onclick="archiveProd('${esc(item.barcode)}')">Archive</button>
+            <button class="btn btn-rose btn-sm" style="margin-left:4px" onclick="deleteProd('${esc(item.barcode)}')">&#x1F5D1; Delete</button>
+          </td>
         </tr>`;
       });
       html+=`</tbody></table></div>`;
@@ -1983,6 +1987,78 @@ function moveProd(barcode,targetCat){
   po_data.categories=removed.map(c=>c.name===targetCat?{...c,items:[...c.items,moved]}:c);
   renderProductMaster();
 }
+function importProducts(){
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.xlsx,.xls,.csv';
+  input.onchange = function(){
+    const file = this.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e){
+      let rows = [];
+      // Determine file type
+      if(file.name.match(/\.xlsx?$/i)){
+        const XLSX = window.XLSX;
+        if(!XLSX){ showToast('Excel library not loaded', 4000); return; }
+        const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:false});
+      } else {
+        // CSV
+        const text = e.target.result;
+        rows = text.split('\n').map(r=>r.split(',').map(v=>v.trim().replace(/^"|"$/g,'')));
+      }
+      if(rows.length < 2){ showToast('No data found in file', 4000); return; }
+      // Find header row (skip if first row looks like headers)
+      const headers = rows[0].map(h=>String(h).toLowerCase().trim());
+      const hasHeader = headers.some(h=>['barcode','description','category','pack'].some(k=>h.includes(k)));
+      const dataRows = hasHeader ? rows.slice(1) : rows;
+      // Column indices: Barcode, Description, Category, Pack Qty, Unit
+      const bIdx=0, dIdx=1, cIdx=2, qIdx=3, uIdx=4;
+      let added=0, skipped=0;
+      dataRows.forEach(row=>{
+        if(!row || !row[bIdx] || !row[dIdx]) return; // skip empty rows
+        const barcode = String(row[bIdx]).trim();
+        const desc = String(row[dIdx]).trim();
+        const catName = String(row[cIdx]||'Imported').trim() || 'Imported';
+        const packQty = String(row[qIdx]||'1').trim() || '1';
+        const unit = String(row[uIdx]||'KG').trim() || 'KG';
+        const pack = packQty + ' ' + unit;
+        if(!barcode || !desc){ skipped++; return; }
+        // Check for duplicate barcode
+        const exists = po_data.categories.some(cat=>cat.items.some(i=>i.barcode===barcode));
+        if(exists){ skipped++; return; }
+        // Find or create category
+        let cat = po_data.categories.find(c=>c.name===catName);
+        if(!cat){
+          cat = {name:catName, items:[]};
+          po_data.categories.push(cat);
+        }
+        const newItem = {barcode, desc, pack, ctn:0, previousCtn:0, sell:0, previousSell:0, active:true};
+        cat.items.push(newItem);
+        // Initialise store entries
+        PO_STORES.forEach(s=>{
+          if(!po_data.storeEntries[s]) po_data.storeEntries[s]={};
+          po_data.storeEntries[s][barcode]={boh:'',req:''};
+        });
+        if(!po_data.sentValues) po_data.sentValues={};
+        po_data.sentValues[barcode]={fbs:'',bl:'',wyl:''};
+        added++;
+      });
+      saveToCloud();
+      renderProductMaster();
+      showToast(added+' products imported'+(skipped?' ('+skipped+' skipped)':''));
+    };
+    if(file.name.match(/\.xlsx?$/i)){
+      reader.readAsArrayBuffer(file);
+    } else {
+      reader.readAsText(file);
+    }
+  };
+  input.click();
+}
+
 function addProduct(){
   const newItem={barcode:'',desc:'New Product',pack:'1 KG',ctn:0,previousCtn:0,sell:0,previousSell:0,active:true};
   if(!po_data.categories.length) po_data.categories=[{name:'New Category',items:[]}];
@@ -1997,6 +2073,18 @@ function addCategory(){
   renderProductMaster(); showToast('Category added');
 }
 function archiveProd(barcode){ updateProdField(barcode,'active',false); showToast('Product archived'); }
+function deleteProd(barcode){
+  if(!confirm('Delete this product permanently? This cannot be undone.')) return;
+  po_data.categories.forEach(cat=>{
+    cat.items = cat.items.filter(i=>i.barcode!==barcode);
+  });
+  // Clean up related data
+  PO_STORES.forEach(s=>{ if(po_data.storeEntries[s]) delete po_data.storeEntries[s][barcode]; });
+  if(po_data.sentValues) delete po_data.sentValues[barcode];
+  saveToCloud();
+  renderProductMaster();
+  showToast('Product deleted');
+}
 
 // ═══════════════════════════════════════════
 // DISPATCH
