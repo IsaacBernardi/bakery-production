@@ -1993,58 +1993,90 @@ function renderDispatch(){
   if(!po_data) return;
   const storesToShow = po_appRole==='buyer' ? PO_STORES : [po_appStore];
   let html = '';
+  let anyVisible = false;
 
   storesToShow.forEach(store=>{
     const key = PO_STORE_KEYS[store];
     const dStatus = po_data.dispatchStatuses[store];
-      const rows = allActive().filter(i=>getSent(i.barcode,key)>0);
     const isFinalised = dStatus==='finalised';
-
-    // Store role: only show finalised dispatches
-    if(po_appRole==='store' && !isFinalised){
-      html+=`<div class="card mb16">
-        <div class="card-body" style="text-align:center;padding:32px;color:var(--s400)">
-          <div style="font-size:32px;margin-bottom:8px">&#128274;</div>
-          <div style="font-weight:600;margin-bottom:4px">${esc(store)} — Awaiting Buyer Finalisation</div>
-          <div style="font-size:12px">The buyer has not yet finalised this dispatch cycle.</div>
-        </div>
-      </div>`;
-      return;
-    }
-
-    html+=`<div class="card mb16">
-      <div class="card-header">
-        <div class="flex items-center justify-between flex-wrap gap12">
-          <div>
-            <h2>${esc(store)} Dispatch</h2>
-            <p>Dispatch quantities for this cycle</p>
-            <div class="flex gap8 mt8 flex-wrap">
-              <span class="badge badge-${isFinalised?'blue':'slate'}">Dispatch: ${dStatus}</span>
-            </div>
-          </div>
-          <div class="flex gap8 flex-wrap">`;
+    const rows = allActive().filter(i=>getSent(i.barcode,key)>0);
+    const hasEntries = rows.length > 0;
 
     if(po_appRole==='buyer'){
+      // Buyer: hide if draft AND no entries
+      if(!isFinalised && !hasEntries) return;
+      anyVisible = true;
+
+      html+=`<div class="card mb16">
+        <div class="card-header">
+          <div class="flex items-center justify-between flex-wrap gap12">
+            <div>
+              <h2>${esc(store)} Dispatch</h2>
+              <p>Dispatch quantities for this cycle</p>
+              <div class="flex gap8 mt8 flex-wrap">
+                <span class="badge badge-${isFinalised?'blue':'slate'}">Dispatch: ${dStatus}</span>
+              </div>
+            </div>
+            <div class="flex gap8 flex-wrap">`;
       html+=isFinalised
         ?`<button class="btn btn-outline btn-sm" onclick="reopenDispatch('${esc(store)}')">Reopen</button>`
         :`<button class="btn btn-dark btn-sm" onclick="finaliseDispatch('${esc(store)}')">Finalise</button>`;
-    } else {
-      // Store: Print & Archive only (dispatch must be finalised to reach here)
-      html+=`<button class="btn btn-dark btn-sm" onclick="printDispatch('${esc(store)}')">Print &amp; Archive</button>`;
-    }
-
-    html+=`</div></div></div>
-      <div class="table-wrap" style="border:none"><table><thead><tr>
-        <th>Barcode</th><th>Product</th><th>Qty Sent</th><th>Pack</th>
-      </tr></thead><tbody>`;
-
-    if(rows.length){
+      html+=`</div></div></div>
+        <div class="table-wrap" style="border:none"><table><thead><tr>
+          <th>Barcode</th><th>Product</th><th>Qty Sent</th><th>Pack</th>
+        </tr></thead><tbody>`;
       rows.forEach(i=>{ html+=`<tr><td class="text-slate">${esc(i.barcode)}</td><td style="font-weight:500">${esc(i.desc)}</td><td>${getSent(i.barcode,key)}</td><td>${esc(i.pack)}</td></tr>`; });
+      html+=`</tbody></table></div></div>`;
+
     } else {
-      html+=`<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--s400)">No dispatch quantities entered yet.</td></tr>`;
+      // Store: only show finalised dispatches
+      if(!isFinalised){
+        anyVisible = true;
+        html+=`<div class="card mb16">
+          <div class="card-body" style="text-align:center;padding:32px;color:var(--s400)">
+            <div style="font-size:32px;margin-bottom:8px">&#128274;</div>
+            <div style="font-weight:600;margin-bottom:4px">${esc(store)} — Awaiting Buyer Finalisation</div>
+            <div style="font-size:12px">The buyer has not yet finalised this dispatch cycle.</div>
+          </div>
+        </div>`;
+        return;
+      }
+      anyVisible = true;
+      html+=`<div class="card mb16">
+        <div class="card-header">
+          <div class="flex items-center justify-between flex-wrap gap12">
+            <div>
+              <h2>${esc(store)} Dispatch</h2>
+              <p>Dispatch quantities for this cycle</p>
+              <div class="flex gap8 mt8 flex-wrap">
+                <span class="badge badge-blue">Ready to Print</span>
+              </div>
+            </div>
+            <div class="flex gap8 flex-wrap">
+              <button class="btn btn-dark btn-sm" onclick="printDispatch('${esc(store)}')">Print &amp; Archive</button>
+            </div>
+          </div>
+        </div>
+        <div class="table-wrap" style="border:none"><table><thead><tr>
+          <th>Barcode</th><th>Product</th><th>Qty Sent</th><th>Pack</th>
+        </tr></thead><tbody>`;
+      if(rows.length){
+        rows.forEach(i=>{ html+=`<tr><td class="text-slate">${esc(i.barcode)}</td><td style="font-weight:500">${esc(i.desc)}</td><td>${getSent(i.barcode,key)}</td><td>${esc(i.pack)}</td></tr>`; });
+      } else {
+        html+=`<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--s400)">No dispatch quantities entered yet.</td></tr>`;
+      }
+      html+=`</tbody></table></div></div>`;
     }
-    html+=`</tbody></table></div></div>`;
   });
+
+  // Buyer: show empty state if nothing to display
+  if(po_appRole==='buyer' && !anyVisible){
+    html=`<div style="text-align:center;padding:40px;color:var(--s400)">
+      <div style="font-size:32px;margin-bottom:8px">&#x1F4CB;</div>
+      <div style="font-weight:600">No dispatches ready</div>
+      <div style="font-size:12px;margin-top:4px">Enter sent quantities on the Buyer Dashboard to create a dispatch</div>
+    </div>`;
+  }
 
   document.getElementById('po-dispContent').innerHTML = html;
 }
