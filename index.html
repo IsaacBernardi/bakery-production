@@ -637,6 +637,7 @@ tbody tr:hover{background:var(--s50)}
             <div class="tab po-buyer-only hidden" onclick="showTab('po-tp')">Product Master</div>
             <div class="tab" onclick="showTab('po-td')">Dispatch Sheet</div>
             <div class="tab" onclick="showTab('po-th')">&#x1F4C5; History</div>
+            <div class="tab" onclick="showTab('po-th')">&#x1F4C5; History</div>
           </div>
         </div>
         <div id="po-ts" class="tab-content active card-body" style="padding-top:4px">
@@ -1701,7 +1702,7 @@ function showTab(id) {
   const el = document.getElementById(rid);
   if (el) el.classList.add('active');
   document.querySelectorAll('#panel-produce .tab').forEach(t=>t.classList.remove('active'));
-  const idx = {'po-ts':0,'po-tb':1,'po-tp':2,'po-td':3};
+  const idx = {'po-ts':0,'po-tb':1,'po-tp':2,'po-td':3,'po-th':4};
   const tabs = document.querySelectorAll('#panel-produce .tab');
   if (tabs[idx[rid] !== undefined ? idx[rid] : 0]) tabs[idx[rid] !== undefined ? idx[rid] : 0].classList.add('active');
   if(rid==='po-tb') renderBuyer(); if(rid==='po-th') renderDispatchHistory();
@@ -1879,7 +1880,19 @@ function renderBuyer(){
   document.getElementById('po-bTbody').innerHTML=html;
 }
 function toggleBuyer(name){ collapsedBuyer[name]=!collapsedBuyer[name]; renderBuyer(); }
-function updateSent(b,k,v){ if(!po_data.sentValues[b])po_data.sentValues[b]={fbs:'',bl:'',wyl:''}; po_data.sentValues[b][k]=v; recalc(); }
+function updateSent(b,k,v){
+  if(!po_data.sentValues[b]) po_data.sentValues[b]={fbs:'',bl:'',wyl:''};
+  po_data.sentValues[b][k]=v;
+  // If buyer enters a new sent value, reset dispatch status so card can appear
+  const storeForKey = k==='fbs'?'Forbes':k==='bl'?'Blayney':'West Wyalong';
+  if(v && v!=='' && po_data.dispatchStatuses[storeForKey]==='finalised'){
+    po_data.dispatchStatuses[storeForKey]='draft';
+  }
+  recalc();
+  // Refresh dispatch tab if it's currently visible
+  const dispTab = document.getElementById('po-td');
+  if(dispTab && dispTab.classList.contains('active')) renderDispatch();
+}
 function applyCostChanges(){
   po_data.categories=po_data.categories.map(c=>({...c,items:c.items.map(i=>{
     const v=po_newCostVals[i.barcode]; return v&&parseFloat(v)!==i.ctn?{...i,previousCtn:i.ctn,ctn:parseFloat(v)}:i;
