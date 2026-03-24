@@ -636,6 +636,7 @@ tbody tr:hover{background:var(--s50)}
             <div class="tab po-buyer-only hidden" onclick="showTab('po-tb')">Buyer Dashboard</div>
             <div class="tab po-buyer-only hidden" onclick="showTab('po-tp')">Product Master</div>
             <div class="tab" onclick="showTab('po-td')">Dispatch Sheet</div>
+            <div class="tab" onclick="showTab('po-th')">&#x1F4C5; History</div>
           </div>
         </div>
         <div id="po-ts" class="tab-content active card-body" style="padding-top:4px">
@@ -686,6 +687,9 @@ tbody tr:hover{background:var(--s50)}
         </div>
         <div id="po-td" class="tab-content card-body" style="padding-top:4px">
           <div id="po-dispContent"></div>
+        </div>
+        <div id="po-th" class="tab-content card-body" style="padding-top:4px">
+          <div id="po-histContent"></div>
         </div>
       </div>
     </div>
@@ -1550,6 +1554,64 @@ function toggleHDetail(id){
   if(el) el.classList.toggle('open');
 }
 
+function renderDispatchHistory(){
+  if(!po_data) return;
+  const history = (po_data.dispatchHistory||[]).filter(snap=>{
+    // Store users only see their own store history
+    return po_appRole==='buyer' || snap.store===po_appStore;
+  });
+  const container = document.getElementById('po-histContent');
+  if(!container) return;
+
+  if(!history.length){
+    container.innerHTML=`<div style="text-align:center;padding:40px;color:var(--s400)">
+      <div style="font-size:32px;margin-bottom:8px">&#128196;</div>
+      <div style="font-weight:600">No dispatch history yet</div>
+      <div style="font-size:12px;margin-top:4px">Finalised dispatches will appear here</div>
+    </div>`;
+    return;
+  }
+
+  let html='<div class="history-list">';
+  history.forEach((snap,idx)=>{
+    const storeLabel = po_appRole==='buyer' ? `<span class="badge badge-slate" style="margin-right:6px">${esc(snap.store)}</span>` : '';
+    const key = PO_STORE_KEYS[snap.store];
+    html+=`<div class="history-card">
+      <div class="hcard-header" onclick="toggleHDetail('po-dh-${idx}')">
+        <div class="hc-left">
+          ${storeLabel}
+          <span class="hc-label">${esc(snap.label)}</span>
+          <span class="hc-date">${new Date(snap.savedAt).toLocaleString('en-AU',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</span>
+        </div>
+        <div class="hc-actions">
+          <button class="hc-btn" onclick="event.stopPropagation();printSnapDispatch(${idx})">&#x1F5A8; Print</button>
+          ${po_appRole==='buyer'?`<button class="hc-btn" onclick="event.stopPropagation();reloadSnap(${idx})">&#x21BA; Reload</button>`:''}
+        </div>
+      </div>
+      <div class="hcard-detail" id="po-dh-${idx}">
+        <table><thead><tr>
+          <th class="left">Barcode</th><th class="left">Product</th><th>Qty Sent</th><th>Pack</th>
+        </tr></thead><tbody>`;
+    (snap.categories||[]).forEach(cat=>{
+      (cat.items||[]).filter(i=>i.active).forEach(item=>{
+        const sv = snap.sentValues[item.barcode];
+        if(!sv) return;
+        const qty = snap.store==='Forbes'?sv.fbs:snap.store==='Blayney'?sv.bl:sv.wyl;
+        if(!qty && qty!==0) return;
+        html+=`<tr>
+          <td class="left text-slate">${esc(item.barcode)}</td>
+          <td class="left">${esc(item.desc)}</td>
+          <td style="font-weight:600">${qty}</td>
+          <td>${esc(item.pack)}</td>
+        </tr>`;
+      });
+    });
+    html+=`</tbody></table></div></div>`;
+  });
+  html+='</div>';
+  container.innerHTML = html;
+}
+
 async function saveToCloud() {
   setCloud('busy','Saving...');
   // sync UI inputs back
@@ -1642,7 +1704,7 @@ function showTab(id) {
   const idx = {'po-ts':0,'po-tb':1,'po-tp':2,'po-td':3};
   const tabs = document.querySelectorAll('#panel-produce .tab');
   if (tabs[idx[rid] !== undefined ? idx[rid] : 0]) tabs[idx[rid] !== undefined ? idx[rid] : 0].classList.add('active');
-  if(rid==='po-tb') renderBuyer();
+  if(rid==='po-tb') renderBuyer(); if(rid==='po-th') renderDispatchHistory();
   if(rid==='po-tp') renderProductMaster();
   if(rid==='po-td') renderDispatch();
 }
@@ -1929,14 +1991,28 @@ function archiveProd(barcode){ updateProdField(barcode,'active',false); showToas
 // ═══════════════════════════════════════════
 function renderDispatch(){
   if(!po_data) return;
-  const storesToShow=po_appRole==='buyer'?PO_STORES:[po_appStore];
-  const history=po_data.dispatchHistory||[];
-  let html='';
+  const storesToShow = po_appRole==='buyer' ? PO_STORES : [po_appStore];
+  let html = '';
+
   storesToShow.forEach(store=>{
-    const key=PO_STORE_KEYS[store];
-    const dStatus=po_data.dispatchStatuses[store];
-    const meta=po_data.dispatchMeta[store]||{printed:false};
-    const rows=allActive().filter(i=>getSent(i.barcode,key)>0);
+    const key = PO_STORE_KEYS[store];
+    const dStatus = po_data.dispatchStatuses[store];
+    const meta = po_data.dispatchMeta[store]||{printed:false};
+    const rows = allActive().filter(i=>getSent(i.barcode,key)>0);
+    const isFinalised = dStatus==='finalised';
+
+    // Store role: only show finalised dispatches
+    if(po_appRole==='store' && !isFinalised){
+      html+=`<div class="card mb16">
+        <div class="card-body" style="text-align:center;padding:32px;color:var(--s400)">
+          <div style="font-size:32px;margin-bottom:8px">&#128274;</div>
+          <div style="font-weight:600;margin-bottom:4px">${esc(store)} — Awaiting Buyer Finalisation</div>
+          <div style="font-size:12px">The buyer has not yet finalised this dispatch cycle.</div>
+        </div>
+      </div>`;
+      return;
+    }
+
     html+=`<div class="card mb16">
       <div class="card-header">
         <div class="flex items-center justify-between flex-wrap gap12">
@@ -1944,24 +2020,26 @@ function renderDispatch(){
             <h2>${esc(store)} Dispatch</h2>
             <p>Dispatch quantities for this cycle</p>
             <div class="flex gap8 mt8 flex-wrap">
-              <span class="badge badge-${dStatus==='finalised'?'blue':'slate'}">Dispatch: ${dStatus}</span>
+              <span class="badge badge-${isFinalised?'blue':'slate'}">Dispatch: ${dStatus}</span>
               <span class="badge badge-${meta.printed?'emerald':'slate'}">Printed: ${meta.printed?'Yes':'No'}</span>
             </div>
           </div>
           <div class="flex gap8 flex-wrap">`;
+
     if(po_appRole==='buyer'){
-      // Buyer: Finalise/Reopen only - NO print
-      html+=dStatus==='draft'
-        ?`<button class="btn btn-dark btn-sm" onclick="finaliseDispatch('${esc(store)}')">Finalise</button>`
-        :`<button class="btn btn-outline btn-sm" onclick="reopenDispatch('${esc(store)}')">Reopen</button>`;
+      html+=isFinalised
+        ?`<button class="btn btn-outline btn-sm" onclick="reopenDispatch('${esc(store)}')">Reopen</button>`
+        :`<button class="btn btn-dark btn-sm" onclick="finaliseDispatch('${esc(store)}')">Finalise</button>`;
     } else {
-      // Store user: Print only (triggers archive after print)
+      // Store: Print & Archive only (dispatch must be finalised to reach here)
       html+=`<button class="btn btn-dark btn-sm" onclick="printDispatch('${esc(store)}')">Print &amp; Archive</button>`;
     }
+
     html+=`</div></div></div>
       <div class="table-wrap" style="border:none"><table><thead><tr>
         <th>Barcode</th><th>Product</th><th>Qty Sent</th><th>Pack</th>
       </tr></thead><tbody>`;
+
     if(rows.length){
       rows.forEach(i=>{ html+=`<tr><td class="text-slate">${esc(i.barcode)}</td><td style="font-weight:500">${esc(i.desc)}</td><td>${getSent(i.barcode,key)}</td><td>${esc(i.pack)}</td></tr>`; });
     } else {
@@ -1970,42 +2048,7 @@ function renderDispatch(){
     html+=`</tbody></table></div></div>`;
   });
 
-  // History section — visible to both roles
-  if(history.length){
-    html+=`<div class="card mb16">
-      <div class="card-header"><h2>Dispatch History</h2><p>Previously finalised dispatches</p></div>
-      <div class="card-body">`;
-    history.forEach((snap,idx)=>{
-      html+=`<div class="history-card mb8">
-        <div class="hcard-header" onclick="toggleHDetail('po-dh-${idx}')">
-          <div class="hc-left">
-            <span class="hc-label">${esc(snap.label)}</span>
-            <span class="hc-date">${new Date(snap.savedAt).toLocaleString('en-AU')}</span>
-          </div>
-          <div class="hc-actions">
-            <button class="hc-btn" onclick="event.stopPropagation();printSnapDispatch(${idx})">Print</button>
-            ${po_appRole==='buyer'?`<button class="hc-btn" onclick="event.stopPropagation();reloadSnap(${idx})">Reload</button>`:''}
-          </div>
-        </div>
-        <div class="hcard-detail" id="po-dh-${idx}">
-          <table><thead><tr><th class="left">Barcode</th><th class="left">Product</th><th>Qty Sent</th><th>Pack</th></tr></thead><tbody>`;
-      // Show snap items
-      const snapCats=snap.categories||[];
-      snapCats.forEach(cat=>{
-        (cat.items||[]).filter(i=>i.active).forEach(item=>{
-          const sv=snap.sentValues[item.barcode];
-          if(!sv) return;
-          const qty=snap.store==='Forbes'?sv.fbs:snap.store==='Blayney'?sv.bl:sv.wyl;
-          if(!qty) return;
-          html+=`<tr><td class="left text-slate">${esc(item.barcode)}</td><td class="left">${esc(item.desc)}</td><td>${qty}</td><td>${esc(item.pack)}</td></tr>`;
-        });
-      });
-      html+=`</tbody></table></div></div>`;
-    });
-    html+=`</div></div>`;
-  }
-
-  document.getElementById('po-dispContent').innerHTML=html;
+  document.getElementById('po-dispContent').innerHTML = html;
 }
 function finaliseDispatch(store){
   if(!po_data) return;
