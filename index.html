@@ -2003,25 +2003,21 @@ function renderDispatch(){
     const hasEntries = rows.length > 0;
 
     if(po_appRole==='buyer'){
-      // Buyer: hide if draft AND no entries
-      if(!isFinalised && !hasEntries) return;
+      // Only show if there are sent quantities AND not yet finalised
+      if(isFinalised || !hasEntries) return;
       anyVisible = true;
-
       html+=`<div class="card mb16">
         <div class="card-header">
           <div class="flex items-center justify-between flex-wrap gap12">
             <div>
               <h2>${esc(store)} Dispatch</h2>
               <p>Dispatch quantities for this cycle</p>
-              <div class="flex gap8 mt8 flex-wrap">
-                <span class="badge badge-${isFinalised?'blue':'slate'}">Dispatch: ${dStatus}</span>
-              </div>
             </div>
-            <div class="flex gap8 flex-wrap">`;
-      html+=isFinalised
-        ?`<button class="btn btn-outline btn-sm" onclick="reopenDispatch('${esc(store)}')">Reopen</button>`
-        :`<button class="btn btn-dark btn-sm" onclick="finaliseDispatch('${esc(store)}')">Finalise</button>`;
-      html+=`</div></div></div>
+            <div class="flex gap8 flex-wrap">
+              <button class="btn btn-dark btn-sm" onclick="finaliseDispatch('${esc(store)}')">Finalise</button>
+            </div>
+          </div>
+        </div>
         <div class="table-wrap" style="border:none"><table><thead><tr>
           <th>Barcode</th><th>Product</th><th>Qty Sent</th><th>Pack</th>
         </tr></thead><tbody>`;
@@ -2030,8 +2026,8 @@ function renderDispatch(){
 
     } else {
       // Store: only show finalised dispatches
+      anyVisible = true;
       if(!isFinalised){
-        anyVisible = true;
         html+=`<div class="card mb16">
           <div class="card-body" style="text-align:center;padding:32px;color:var(--s400)">
             <div style="font-size:32px;margin-bottom:8px">&#128274;</div>
@@ -2041,14 +2037,13 @@ function renderDispatch(){
         </div>`;
         return;
       }
-      anyVisible = true;
       html+=`<div class="card mb16">
         <div class="card-header">
           <div class="flex items-center justify-between flex-wrap gap12">
             <div>
               <h2>${esc(store)} Dispatch</h2>
               <p>Dispatch quantities for this cycle</p>
-              <div class="flex gap8 mt8 flex-wrap">
+              <div class="flex gap8 mt8">
                 <span class="badge badge-blue">Ready to Print</span>
               </div>
             </div>
@@ -2069,7 +2064,7 @@ function renderDispatch(){
     }
   });
 
-  // Buyer: show empty state if nothing to display
+  // Buyer: empty state
   if(po_appRole==='buyer' && !anyVisible){
     html=`<div style="text-align:center;padding:40px;color:var(--s400)">
       <div style="font-size:32px;margin-bottom:8px">&#x1F4CB;</div>
@@ -2122,7 +2117,8 @@ function finaliseDispatch(store){
   renderDispatch();
   showToast(store+' dispatch finalised — ready for store to print');
 }
-function reopenDispatch(store){ po_data.dispatchStatuses[store]='draft'; renderDispatch(); showToast(`${store} dispatch reopened`); }
+// [reopenDispatch removed]
+
 function togglePrinted(store){
   if(!po_data.dispatchMeta[store]) po_data.dispatchMeta[store]={printed:false,emailed:false};
   po_data.dispatchMeta[store].printed=!po_data.dispatchMeta[store].printed;
