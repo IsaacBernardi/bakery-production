@@ -1482,7 +1482,7 @@ async function loadFromCloud() {
     if (!res.ok) throw new Error('HTTP '+res.status);
     po_data = await res.json();
     // ensure new stores/fields exist
-    PO_STORES.forEach(s => { if (!po_data.storeEntries[s]) po_data.storeEntries[s]={}; if (!po_data.dispatchMeta[s]) po_data.dispatchMeta[s]={printed:false,emailed:false}; });
+    PO_STORES.forEach(s => { if (!po_data.storeEntries[s]) po_data.storeEntries[s]={}; if (!po_data.dispatchMeta[s]) po_data.dispatchMeta[s]={printed:false}; }); if(!po_data.dispatchHistory) po_data.dispatchHistory=[];
     setCloud('ok','Loaded from cloud');
     showToast('Data loaded ✓');
   } catch(e) {
@@ -1491,6 +1491,65 @@ async function loadFromCloud() {
     showToast('Could not load from cloud: '+e.message, 5000);
   }
 }
+async function printSnapDispatch(snapIdx){
+  if(!po_data) return;
+  const snap=po_data.dispatchHistory[snapIdx];
+  if(!snap) return;
+  const key=PO_STORE_KEYS[snap.store];
+  const dateStr=new Date(snap.savedAt).toLocaleString('en-AU');
+  let h=`<div class="ptitle">${esc(snap.store)} Dispatch Sheet`;
+  h+=`<span class="psub">${dateStr} (Historical)</span></div>`;
+  h+=`<table><thead><tr>`;
+  h+=`<th class="left" style="width:12%">Barcode</th>`;
+  h+=`<th class="left" style="width:52%">Product</th>`;
+  h+=`<th style="width:20%">Qty Sent</th>`;
+  h+=`<th style="width:16%">Pack</th>`;
+  h+=`</tr></thead><tbody>`;
+  (snap.categories||[]).forEach(cat=>{
+    (cat.items||[]).filter(i=>i.active).forEach(item=>{
+      const sv=snap.sentValues[item.barcode];
+      if(!sv) return;
+      const qty=snap.store==='Forbes'?sv.fbs:snap.store==='Blayney'?sv.bl:sv.wyl;
+      if(!qty) return;
+      h+=`<tr><td class="left" style="font-size:9px">${esc(item.barcode)}</td>`;
+      h+=`<td class="left">${esc(item.desc)}</td>`;
+      h+=`<td style="font-weight:700;font-size:12px">${qty}</td>`;
+      h+=`<td>${esc(item.pack)}</td></tr>`;
+    });
+  });
+  h+=`</tbody></table>`;
+  document.getElementById('printArea').innerHTML=h;
+  setTimeout(function(){ window.print(); },80);
+}
+
+function reloadSnap(snapIdx){
+  if(!po_data) return;
+  const snap=po_data.dispatchHistory[snapIdx];
+  if(!snap) return;
+  if(!confirm('Reload this dispatch snapshot? This will overwrite current '+snap.store+' store entry and sent values.')) return;
+  const key=PO_STORE_KEYS[snap.store];
+  // Restore store entries
+  po_data.storeEntries[snap.store]=JSON.parse(JSON.stringify(snap.storeEntries||{}));
+  // Restore sent values
+  Object.keys(snap.sentValues||{}).forEach(bc=>{
+    if(!po_data.sentValues[bc]) po_data.sentValues[bc]={fbs:'',bl:'',wyl:''};
+    const sv=snap.sentValues[bc];
+    if(key==='fbs') po_data.sentValues[bc].fbs=sv.fbs||'';
+    else if(key==='bl') po_data.sentValues[bc].bl=sv.bl||'';
+    else if(key==='wyl') po_data.sentValues[bc].wyl=sv.wyl||'';
+  });
+  po_data.dispatchStatuses[snap.store]='finalised';
+  saveToCloud();
+  renderStoreEntry();
+  renderDispatch();
+  showToast('Snapshot reloaded — '+snap.label);
+}
+
+function toggleHDetail(id){
+  const el=document.getElementById(id);
+  if(el) el.classList.toggle('open');
+}
+
 async function saveToCloud() {
   setCloud('busy','Saving...');
   // sync UI inputs back
@@ -1871,18 +1930,19 @@ function archiveProd(barcode){ updateProdField(barcode,'active',false); showToas
 function renderDispatch(){
   if(!po_data) return;
   const storesToShow=po_appRole==='buyer'?PO_STORES:[po_appStore];
+  const history=po_data.dispatchHistory||[];
   let html='';
   storesToShow.forEach(store=>{
     const key=PO_STORE_KEYS[store];
     const dStatus=po_data.dispatchStatuses[store];
-    const meta=po_data.dispatchMeta[store]||{printed:false,emailed:false};
+    const meta=po_data.dispatchMeta[store]||{printed:false};
     const rows=allActive().filter(i=>getSent(i.barcode,key)>0);
     html+=`<div class="card mb16">
       <div class="card-header">
         <div class="flex items-center justify-between flex-wrap gap12">
           <div>
             <h2>${esc(store)} Dispatch</h2>
-            <p>Buyer dispatch quantities for this cycle</p>
+            <p>Dispatch quantities for this cycle</p>
             <div class="flex gap8 mt8 flex-wrap">
               <span class="badge badge-${dStatus==='finalised'?'blue':'slate'}">Dispatch: ${dStatus}</span>
               <span class="badge badge-${meta.printed?'emerald':'slate'}">Printed: ${meta.printed?'Yes':'No'}</span>
@@ -1890,10 +1950,13 @@ function renderDispatch(){
           </div>
           <div class="flex gap8 flex-wrap">`;
     if(po_appRole==='buyer'){
+      // Buyer: Finalise/Reopen only - NO print
       html+=dStatus==='draft'
         ?`<button class="btn btn-dark btn-sm" onclick="finaliseDispatch('${esc(store)}')">Finalise</button>`
         :`<button class="btn btn-outline btn-sm" onclick="reopenDispatch('${esc(store)}')">Reopen</button>`;
-      html+=`<button class="btn btn-dark btn-sm" onclick="printDispatch('${esc(store)}')">Print</button>`;
+    } else {
+      // Store user: Print only (triggers archive after print)
+      html+=`<button class="btn btn-dark btn-sm" onclick="printDispatch('${esc(store)}')">Print &amp; Archive</button>`;
     }
     html+=`</div></div></div>
       <div class="table-wrap" style="border:none"><table><thead><tr>
@@ -1906,19 +1969,85 @@ function renderDispatch(){
     }
     html+=`</tbody></table></div></div>`;
   });
+
+  // History section — visible to both roles
+  if(history.length){
+    html+=`<div class="card mb16">
+      <div class="card-header"><h2>Dispatch History</h2><p>Previously finalised dispatches</p></div>
+      <div class="card-body">`;
+    history.forEach((snap,idx)=>{
+      html+=`<div class="history-card mb8">
+        <div class="hcard-header" onclick="toggleHDetail('po-dh-${idx}')">
+          <div class="hc-left">
+            <span class="hc-label">${esc(snap.label)}</span>
+            <span class="hc-date">${new Date(snap.savedAt).toLocaleString('en-AU')}</span>
+          </div>
+          <div class="hc-actions">
+            <button class="hc-btn" onclick="event.stopPropagation();printSnapDispatch(${idx})">Print</button>
+            ${po_appRole==='buyer'?`<button class="hc-btn" onclick="event.stopPropagation();reloadSnap(${idx})">Reload</button>`:''}
+          </div>
+        </div>
+        <div class="hcard-detail" id="po-dh-${idx}">
+          <table><thead><tr><th class="left">Barcode</th><th class="left">Product</th><th>Qty Sent</th><th>Pack</th></tr></thead><tbody>`;
+      // Show snap items
+      const snapCats=snap.categories||[];
+      snapCats.forEach(cat=>{
+        (cat.items||[]).filter(i=>i.active).forEach(item=>{
+          const sv=snap.sentValues[item.barcode];
+          if(!sv) return;
+          const qty=snap.store==='Forbes'?sv.fbs:snap.store==='Blayney'?sv.bl:sv.wyl;
+          if(!qty) return;
+          html+=`<tr><td class="left text-slate">${esc(item.barcode)}</td><td class="left">${esc(item.desc)}</td><td>${qty}</td><td>${esc(item.pack)}</td></tr>`;
+        });
+      });
+      html+=`</tbody></table></div></div>`;
+    });
+    html+=`</div></div>`;
+  }
+
   document.getElementById('po-dispContent').innerHTML=html;
 }
 function finaliseDispatch(store){
+  if(!po_data) return;
+  // Save a dispatch snapshot before clearing
+  const key = PO_STORE_KEYS[store];
+  const snap = {
+    store: store,
+    savedAt: new Date().toISOString(),
+    label: store + ' — ' + new Date().toLocaleString('en-AU',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}),
+    dispatchStatus: po_data.dispatchStatuses[store],
+    storeEntries: JSON.parse(JSON.stringify(po_data.storeEntries[store]||{})),
+    sentValues: {},
+    categories: JSON.parse(JSON.stringify(po_data.categories))
+  };
+  // Only save sent values for this store
+  allActive().forEach(i=>{ if(getSent(i.barcode,key)>0) snap.sentValues[i.barcode]=po_data.sentValues[i.barcode]||{}; });
+  if(!po_data.dispatchHistory) po_data.dispatchHistory=[];
+  po_data.dispatchHistory.unshift(snap); // newest first
+  // Keep max 50 snapshots
+  if(po_data.dispatchHistory.length>50) po_data.dispatchHistory=po_data.dispatchHistory.slice(0,50);
+
+  // Set dispatch as finalised
   po_data.dispatchStatuses[store]='finalised';
-  // Clear BOH and customer requests for that store, reset status to draft for next cycle
+  // Clear BOH, customer requests and sent values for that store
   if(po_data.storeEntries[store]){
     Object.keys(po_data.storeEntries[store]).forEach(b=>{
       po_data.storeEntries[store][b]={boh:'',req:''};
     });
   }
+  allActive().forEach(i=>{
+    if(po_data.sentValues[i.barcode]) {
+      const sv = po_data.sentValues[i.barcode];
+      if(key==='fbs') sv.fbs='';
+      else if(key==='bl') sv.bl='';
+      else if(key==='wyl') sv.wyl='';
+    }
+  });
   po_data.storeStatuses[store]='draft';
+  po_data.dispatchMeta[store]={printed:false,emailed:false};
+  saveToCloud();
   renderDispatch();
-  showToast(`${store} dispatch finalised — BOH cleared for next cycle`);
+  showToast(store+' finalised — snapshot saved, entries cleared');
 }
 function reopenDispatch(store){ po_data.dispatchStatuses[store]='draft'; renderDispatch(); showToast(`${store} dispatch reopened`); }
 function togglePrinted(store){
@@ -1953,10 +2082,22 @@ function printDispatch(store){
   document.getElementById('printArea').innerHTML=h;
   setTimeout(function(){
     window.print();
-    // Mark as printed after printing
-    if(!po_data.dispatchMeta[store]) po_data.dispatchMeta[store]={printed:false,emailed:false};
+    // Mark printed and clear sent values for this store (archive)
+    if(!po_data.dispatchMeta[store]) po_data.dispatchMeta[store]={printed:false};
     po_data.dispatchMeta[store].printed=true;
-    saveToCloud(); renderDispatch();
+    // Clear sent quantities for this store
+    allActive().forEach(i=>{
+      if(po_data.sentValues[i.barcode]){
+        const sv=po_data.sentValues[i.barcode];
+        if(key==='fbs') sv.fbs='';
+        else if(key==='bl') sv.bl='';
+        else if(key==='wyl') sv.wyl='';
+      }
+    });
+    po_data.dispatchStatuses[store]='draft';
+    saveToCloud();
+    renderDispatch();
+    showToast(store+' dispatch printed — archived for next cycle');
   },80);
 }
 function toggleEmailed(store){ po_data.dispatchMeta[store].emailed=!po_data.dispatchMeta[store].emailed; renderDispatch(); }
