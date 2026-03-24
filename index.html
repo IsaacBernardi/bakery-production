@@ -637,7 +637,6 @@ tbody tr:hover{background:var(--s50)}
             <div class="tab po-buyer-only hidden" onclick="showTab('po-tp')">Product Master</div>
             <div class="tab" onclick="showTab('po-td')">Dispatch Sheet</div>
             <div class="tab" onclick="showTab('po-th')">&#x1F4C5; History</div>
-            <div class="tab" onclick="showTab('po-th')">&#x1F4C5; History</div>
           </div>
         </div>
         <div id="po-ts" class="tab-content active card-body" style="padding-top:4px">
@@ -2050,12 +2049,15 @@ function renderDispatch(){
         </div>`;
         return;
       }
+      // Store: read from latest snapshot for this store
+      const latestSnap=(po_data.dispatchHistory||[]).find(s=>s.store===store);
+      const snapKey=PO_STORE_KEYS[store];
       html+=`<div class="card mb16">
         <div class="card-header">
           <div class="flex items-center justify-between flex-wrap gap12">
             <div>
               <h2>${esc(store)} Dispatch</h2>
-              <p>Dispatch quantities for this cycle</p>
+              <p>${latestSnap?esc(latestSnap.label):'Dispatch quantities for this cycle'}</p>
               <div class="flex gap8 mt8">
                 <span class="badge badge-blue">Ready to Print</span>
               </div>
@@ -2068,8 +2070,21 @@ function renderDispatch(){
         <div class="table-wrap" style="border:none"><table><thead><tr>
           <th>Barcode</th><th>Product</th><th>Qty Sent</th><th>Pack</th>
         </tr></thead><tbody>`;
-      if(rows.length){
-        rows.forEach(i=>{ html+=`<tr><td class="text-slate">${esc(i.barcode)}</td><td style="font-weight:500">${esc(i.desc)}</td><td>${getSent(i.barcode,key)}</td><td>${esc(i.pack)}</td></tr>`; });
+      if(latestSnap){
+        let snapRows=[];
+        (latestSnap.categories||[]).forEach(cat=>{
+          (cat.items||[]).filter(i=>i.active).forEach(item=>{
+            const sv=latestSnap.sentValues[item.barcode];
+            if(!sv) return;
+            const qty=store==='Forbes'?sv.fbs:store==='Blayney'?sv.bl:sv.wyl;
+            if(qty&&qty!=='') snapRows.push({barcode:item.barcode,desc:item.desc,pack:item.pack,qty});
+          });
+        });
+        if(snapRows.length){
+          snapRows.forEach(r=>{ html+=`<tr><td class="text-slate">${esc(r.barcode)}</td><td style="font-weight:500">${esc(r.desc)}</td><td>${r.qty}</td><td>${esc(r.pack)}</td></tr>`; });
+        } else {
+          html+=`<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--s400)">No items in this dispatch.</td></tr>`;
+        }
       } else {
         html+=`<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--s400)">No dispatch quantities entered yet.</td></tr>`;
       }
@@ -2116,19 +2131,29 @@ function finaliseDispatch(store){
 
   // Mark dispatch as finalised
   po_data.dispatchStatuses[store]='finalised';
-  // Clear BOH and customer requests for that store (ready for next cycle)
-  // BUT keep sentValues so the store can see and print the dispatch
+  // Clear BOH and customer requests for that store
   if(po_data.storeEntries[store]){
     Object.keys(po_data.storeEntries[store]).forEach(b=>{
       po_data.storeEntries[store][b]={boh:'',req:''};
     });
   }
+  // Clear sent values for this store from the live data
+  // (snapshot already saved above for store printing)
+  allActive().forEach(i=>{
+    if(po_data.sentValues[i.barcode]){
+      const sv=po_data.sentValues[i.barcode];
+      if(key==='fbs') sv.fbs='';
+      else if(key==='bl') sv.bl='';
+      else if(key==='wyl') sv.wyl='';
+    }
+  });
   po_data.storeStatuses[store]='draft';
   if(!po_data.dispatchMeta[store]) po_data.dispatchMeta[store]={};
   po_data.dispatchMeta[store].printed=false;
   saveToCloud();
   renderDispatch();
-  showToast(store+' dispatch finalised — ready for store to print');
+  renderBuyer();
+  showToast(store+' dispatch finalised — entries cleared');
 }
 // [reopenDispatch removed]
 
@@ -2140,7 +2165,19 @@ function togglePrinted(store){
 function printDispatch(store){
   if(!po_data) return;
   const key = PO_STORE_KEYS[store];
-  const rows = allActive().filter(i=>getSent(i.barcode,key)>0);
+  // Read from latest snapshot for this store
+  const latestSnap=(po_data.dispatchHistory||[]).find(s=>s.store===store);
+  const rows=[];
+  if(latestSnap){
+    (latestSnap.categories||[]).forEach(cat=>{
+      (cat.items||[]).filter(i=>i.active).forEach(item=>{
+        const sv=latestSnap.sentValues[item.barcode];
+        if(!sv) return;
+        const qty=store==='Forbes'?sv.fbs:store==='Blayney'?sv.bl:sv.wyl;
+        if(qty&&qty!=='') rows.push({barcode:item.barcode,desc:item.desc,pack:item.pack,qty});
+      });
+    });
+  }
   const dateStr = new Date().toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   let h = `<div class="ptitle">${esc(store)} Dispatch Sheet`;
   h += `<span class="psub">${dateStr}</span></div>`;
@@ -2154,7 +2191,7 @@ function printDispatch(store){
     rows.forEach(i=>{
       h += `<tr><td class="left" style="font-size:9px">${esc(i.barcode)}</td>`;
       h += `<td class="left">${esc(i.desc)}</td>`;
-      h += `<td style="font-weight:700;font-size:12px">${getSent(i.barcode,key)}</td>`;
+      h += `<td style="font-weight:700;font-size:12px">${i.qty||getSent(i.barcode,key)}</td>`;
       h += `<td>${esc(i.pack)}</td></tr>`;
     });
   } else {
