@@ -1997,8 +1997,7 @@ function renderDispatch(){
   storesToShow.forEach(store=>{
     const key = PO_STORE_KEYS[store];
     const dStatus = po_data.dispatchStatuses[store];
-    const meta = po_data.dispatchMeta[store]||{printed:false};
-    const rows = allActive().filter(i=>getSent(i.barcode,key)>0);
+      const rows = allActive().filter(i=>getSent(i.barcode,key)>0);
     const isFinalised = dStatus==='finalised';
 
     // Store role: only show finalised dispatches
@@ -2021,7 +2020,6 @@ function renderDispatch(){
             <p>Dispatch quantities for this cycle</p>
             <div class="flex gap8 mt8 flex-wrap">
               <span class="badge badge-${isFinalised?'blue':'slate'}">Dispatch: ${dStatus}</span>
-              <span class="badge badge-${meta.printed?'emerald':'slate'}">Printed: ${meta.printed?'Yes':'No'}</span>
             </div>
           </div>
           <div class="flex gap8 flex-wrap">`;
@@ -2052,45 +2050,45 @@ function renderDispatch(){
 }
 function finaliseDispatch(store){
   if(!po_data) return;
-  // Save a dispatch snapshot before clearing
   const key = PO_STORE_KEYS[store];
+
+  // Validate: must have at least one sent quantity
+  const hasEntries = allActive().some(i => getSent(i.barcode, key) > 0);
+  if(!hasEntries){
+    showToast('Cannot finalise — no dispatch quantities entered for '+store, 4000);
+    return;
+  }
+
+  // Save a dispatch snapshot before clearing store entries
   const snap = {
     store: store,
     savedAt: new Date().toISOString(),
     label: store + ' — ' + new Date().toLocaleString('en-AU',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}),
-    dispatchStatus: po_data.dispatchStatuses[store],
+    dispatchStatus: 'finalised',
     storeEntries: JSON.parse(JSON.stringify(po_data.storeEntries[store]||{})),
     sentValues: {},
     categories: JSON.parse(JSON.stringify(po_data.categories))
   };
-  // Only save sent values for this store
-  allActive().forEach(i=>{ if(getSent(i.barcode,key)>0) snap.sentValues[i.barcode]=po_data.sentValues[i.barcode]||{}; });
+  allActive().forEach(i=>{ if(getSent(i.barcode,key)>0) snap.sentValues[i.barcode]=JSON.parse(JSON.stringify(po_data.sentValues[i.barcode]||{})); });
   if(!po_data.dispatchHistory) po_data.dispatchHistory=[];
-  po_data.dispatchHistory.unshift(snap); // newest first
-  // Keep max 50 snapshots
+  po_data.dispatchHistory.unshift(snap);
   if(po_data.dispatchHistory.length>50) po_data.dispatchHistory=po_data.dispatchHistory.slice(0,50);
 
-  // Set dispatch as finalised
+  // Mark dispatch as finalised
   po_data.dispatchStatuses[store]='finalised';
-  // Clear BOH, customer requests and sent values for that store
+  // Clear BOH and customer requests for that store (ready for next cycle)
+  // BUT keep sentValues so the store can see and print the dispatch
   if(po_data.storeEntries[store]){
     Object.keys(po_data.storeEntries[store]).forEach(b=>{
       po_data.storeEntries[store][b]={boh:'',req:''};
     });
   }
-  allActive().forEach(i=>{
-    if(po_data.sentValues[i.barcode]) {
-      const sv = po_data.sentValues[i.barcode];
-      if(key==='fbs') sv.fbs='';
-      else if(key==='bl') sv.bl='';
-      else if(key==='wyl') sv.wyl='';
-    }
-  });
   po_data.storeStatuses[store]='draft';
-  po_data.dispatchMeta[store]={printed:false,emailed:false};
+  if(!po_data.dispatchMeta[store]) po_data.dispatchMeta[store]={};
+  po_data.dispatchMeta[store].printed=false;
   saveToCloud();
   renderDispatch();
-  showToast(store+' finalised — snapshot saved, entries cleared');
+  showToast(store+' dispatch finalised — ready for store to print');
 }
 function reopenDispatch(store){ po_data.dispatchStatuses[store]='draft'; renderDispatch(); showToast(`${store} dispatch reopened`); }
 function togglePrinted(store){
@@ -2100,48 +2098,47 @@ function togglePrinted(store){
 }
 function printDispatch(store){
   if(!po_data) return;
-  const key=PO_STORE_KEYS[store];
-  const rows=allActive().filter(i=>getSent(i.barcode,key)>0);
-  const dateStr=new Date().toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-  let h=`<div class="ptitle">${esc(store)} Dispatch Sheet`;
-  h+=`<span class="psub">${dateStr}</span></div>`;
-  h+=`<table><thead><tr>`;
-  h+=`<th class="left" style="width:12%">Barcode</th>`;
-  h+=`<th class="left" style="width:52%">Product</th>`;
-  h+=`<th style="width:20%">Qty Sent</th>`;
-  h+=`<th style="width:16%">Pack</th>`;
-  h+=`</tr></thead><tbody>`;
+  const key = PO_STORE_KEYS[store];
+  const rows = allActive().filter(i=>getSent(i.barcode,key)>0);
+  const dateStr = new Date().toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  let h = `<div class="ptitle">${esc(store)} Dispatch Sheet`;
+  h += `<span class="psub">${dateStr}</span></div>`;
+  h += `<table><thead><tr>`;
+  h += `<th class="left" style="width:12%">Barcode</th>`;
+  h += `<th class="left" style="width:52%">Product</th>`;
+  h += `<th style="width:20%">Qty Sent</th>`;
+  h += `<th style="width:16%">Pack</th>`;
+  h += `</tr></thead><tbody>`;
   if(rows.length){
     rows.forEach(i=>{
-      h+=`<tr><td class="left" style="font-size:9px">${esc(i.barcode)}</td>`;
-      h+=`<td class="left">${esc(i.desc)}</td>`;
-      h+=`<td style="font-weight:700;font-size:12px">${getSent(i.barcode,key)}</td>`;
-      h+=`<td>${esc(i.pack)}</td></tr>`;
+      h += `<tr><td class="left" style="font-size:9px">${esc(i.barcode)}</td>`;
+      h += `<td class="left">${esc(i.desc)}</td>`;
+      h += `<td style="font-weight:700;font-size:12px">${getSent(i.barcode,key)}</td>`;
+      h += `<td>${esc(i.pack)}</td></tr>`;
     });
   } else {
-    h+=`<tr><td colspan="4" style="text-align:center;padding:20px">No dispatch quantities entered.</td></tr>`;
+    h += `<tr><td colspan="4" style="text-align:center;padding:20px">No dispatch quantities entered.</td></tr>`;
   }
-  h+=`</tbody></table>`;
-  document.getElementById('printArea').innerHTML=h;
+  h += `</tbody></table>`;
+  document.getElementById('printArea').innerHTML = h;
   setTimeout(function(){
     window.print();
-    // Mark printed and clear sent values for this store (archive)
-    if(!po_data.dispatchMeta[store]) po_data.dispatchMeta[store]={printed:false};
-    po_data.dispatchMeta[store].printed=true;
-    // Clear sent quantities for this store
+    // NOW clear sentValues for this store (archive after print)
     allActive().forEach(i=>{
       if(po_data.sentValues[i.barcode]){
-        const sv=po_data.sentValues[i.barcode];
-        if(key==='fbs') sv.fbs='';
-        else if(key==='bl') sv.bl='';
-        else if(key==='wyl') sv.wyl='';
+        const sv = po_data.sentValues[i.barcode];
+        if(key==='fbs') sv.fbs = '';
+        else if(key==='bl') sv.bl = '';
+        else if(key==='wyl') sv.wyl = '';
       }
     });
-    po_data.dispatchStatuses[store]='draft';
+    po_data.dispatchStatuses[store] = 'draft';
+    if(!po_data.dispatchMeta[store]) po_data.dispatchMeta[store]={};
+    po_data.dispatchMeta[store].printed = true;
     saveToCloud();
     renderDispatch();
     showToast(store+' dispatch printed — archived for next cycle');
-  },80);
+  }, 80);
 }
 function toggleEmailed(store){ po_data.dispatchMeta[store].emailed=!po_data.dispatchMeta[store].emailed; renderDispatch(); }
 
