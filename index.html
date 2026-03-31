@@ -1139,27 +1139,40 @@ function openSpecialGroups(){
   var modal=document.getElementById('sgModal');
   if(!modal){ alert('Modal not found'); return; }
   window._sg_rowId=0;
-
-  var groups=[];
-  if(typeof items!=='undefined' && items.length){
+  renderSpecialGroupsModal(false);
+  if(modal.parentElement!==document.body) document.body.appendChild(modal);
+  modal.style.cssText='display:flex!important;position:fixed!important;inset:0!important;background:rgba(0,0,0,0.5)!important;z-index:99999!important;align-items:center!important;justify-content:center!important;padding:1rem!important;';
+}
+function renderSpecialGroupsModal(showAll){
+  window._sg_rowId=0;
+  // Groups from current import
+  var importGroups=[];
+  if(typeof items!=='undefined'&&items.length){
     var seen={};
-    items.forEach(function(i){
-      var g=(i.group||'').trim();
-      if(g && !seen[g]){ seen[g]=1; groups.push(g); }
-    });
+    items.forEach(function(i){ var g=(i.group||'').trim(); if(g&&!seen[g]){seen[g]=1;importGroups.push(g);} });
   }
-  if(!groups.length){
+  if(!importGroups.length){
     document.querySelectorAll('#tbody .grp-row td').forEach(function(td){
-      var t=td.textContent.trim();
-      if(t && !groups.includes(t)) groups.push(t);
+      var t=td.textContent.trim(); if(t&&!importGroups.includes(t)) importGroups.push(t);
     });
   }
+  // Groups from saved config not in current import
+  var configGroups=Object.keys(specialGroupConfig).filter(function(g){ return !importGroups.includes(g); });
+  var groups=showAll ? importGroups.concat(configGroups) : importGroups;
 
-  var html='';
+  var html='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">';
+  html+='<p style="font-size:12px;color:#888;margin:0">Set which days to sum and where to display for each ERB Special Group.</p>';
+  if(configGroups.length){
+    html+='<button class="btn btn-outline btn-sm" onclick="renderSpecialGroupsModal('+(showAll?'false':'true')+')" style="font-size:11px">';
+    html+=showAll?'&#x1F4CB; Show import groups only':'&#x2699; Show all saved rules ('+configGroups.length+' more)';
+    html+='</button>';
+  }
+  html+='</div>';
+
   if(!groups.length){
-    html='<p style="text-align:center;color:#888;padding:24px;font-size:13px">Import an order file first.</p>';
+    html+='<p style="text-align:center;color:#888;padding:24px;font-size:13px">Import an order file first.</p>';
   } else {
-    html='<table class="sg-table"><thead><tr>';
+    html+='<table class="sg-table"><thead><tr>';
     html+='<th style="text-align:left">Group</th>';
     html+='<th style="text-align:center;white-space:nowrap">Display In</th>';
     DAY_LABELS.forEach(function(day){ html+='<th style="text-align:center">'+day+'</th>'; });
@@ -1173,9 +1186,6 @@ function openSpecialGroups(){
     html+='</tbody></table>';
   }
   document.getElementById('sgBody').innerHTML=html;
-
-  if(modal.parentElement!==document.body) document.body.appendChild(modal);
-  modal.style.cssText='display:flex!important;position:fixed!important;inset:0!important;background:rgba(0,0,0,0.5)!important;z-index:99999!important;align-items:center!important;justify-content:center!important;padding:1rem!important;';
 }
 function buildRuleRow(g, rule){
   var rid='sgr'+(window._sg_rowId=(window._sg_rowId||0)+1);
