@@ -484,7 +484,7 @@ tbody tr:hover{background:var(--s50)}
   <div class="s-sub">What would you like to do?</div>
   <div class="app-row">
     <button class="app-btn" onclick="goTo('s-bakery')">
-      <span class="app-icon">&#x1F35E;</span><span class="app-name">Daily Production</span><span class="app-desc">Bakery sheet &amp; SOH</span>
+      <span class="app-icon">&#x1F4CB;</span><span class="app-name">Daily Production</span><span class="app-desc">Order guides</span>
     </button>
     <button class="app-btn" onclick="goTo('s-produce-role')">
       <span class="app-icon">&#x1F966;</span><span class="app-name">Produce Ordering</span><span class="app-desc">Store orders &amp; dispatch</span>
@@ -566,6 +566,7 @@ tbody tr:hover{background:var(--s50)}
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">Import Order File</button>
+        <button class="btn btn-history" onclick="openHistory()">History</button>
         <input type="file" id="fileInput" accept=".txt,.csv,.tsv,.xlsx,.xls" style="display:none" onchange="handleFile(this)">
       </div>
     </div>
