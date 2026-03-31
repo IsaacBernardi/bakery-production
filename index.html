@@ -1135,7 +1135,9 @@ function renderWeekView(){
         // Avg Sales
         dhtml+='<td class="readonly" style="text-align:center">'+(it.orders[di]||'—')+'</td>';
         // BAKE
-        dhtml+='<td class="'+bcls+'" style="text-align:center">'+bake+'</td>';
+        const wBake=soh[ri][di]!==null?bake:'';
+        const wBcls=soh[ri][di]!==null?bcls:'';
+        dhtml+='<td class="'+wBcls+'" style="text-align:center">'+wBake+'</td>';
       });
       dhtml+='</tr>';
     });
@@ -1173,7 +1175,9 @@ function renderView(){
       dhtml+='<td class="readonly" style="font-size:11px">'+escHtml(it.group||'—')+'</td>';
       dhtml+='<td><input class="soh-input" type="number" inputmode="numeric" id="soh_'+ri+'_'+di+'" placeholder="—" min="0" oninput="deskSOH('+ri+','+di+',this.value)" onkeydown="deskNav(event,'+ri+','+di+')"></td>';
       dhtml+='<td class="readonly">'+(it.orders[di]||'—')+'</td>';
-      dhtml+='<td class="'+bcls+'" id="bake_'+ri+'_'+di+'">'+bake+'</td></tr>';
+      const bakeDisplay=soh[ri][di]!==null?bake:'';
+      const bclsFinal=soh[ri][di]!==null?bcls:'';
+      dhtml+='<td class="'+bclsFinal+'" id="bake_'+ri+'_'+di+'">'+bakeDisplay+'</td></tr>';
     });
   });
   const tbody=document.getElementById('tbody');if(tbody)tbody.innerHTML=dhtml;
@@ -1194,7 +1198,9 @@ function renderView(){
       mhtml+='<div class="mob-desc">'+escHtml(it.desc)+'</div></div><div class="mob-cells">';
       mhtml+='<div class="mob-cell"><div class="mob-cell-label">SOH</div><input class="mob-soh" type="number" inputmode="numeric" pattern="[0-9]*" value="'+sv+'" placeholder="—" min="0" oninput="mobSOH('+ri+','+di+',this.value)" onkeydown="mobNav(event,'+ri+','+di+')"></div>';
       mhtml+='<div class="mob-cell"><div class="mob-cell-label">ORDER</div><div class="mob-cell-val">'+(order||'—')+'</div></div>';
-      mhtml+='<div class="mob-cell"><div class="mob-cell-label">BAKE</div><div class="'+bc+'" id="mbake_'+ri+'_'+di+'">'+bake+'</div></div>';
+      const mobBakeVal=soh[ri][di]!==null?bake:'';
+      const mobBakeCls=soh[ri][di]!==null?bc:'';
+      mhtml+='<div class="mob-cell"><div class="mob-cell-label">BAKE</div><div class="'+mobBakeCls+'" id="mbake_'+ri+'_'+di+'">'+mobBakeVal+'</div></div>';
       mhtml+='</div></div>';
     });
   });
@@ -1304,8 +1310,8 @@ function handlePrint(){
       const bake=calcBake(it.orders[di],soh[ri][di],boost);
       const bc=bake<0?'p-neg':bake===0?'p-zero':'p-bake';
       h+='<tr><td class="left" style="font-size:9px">'+escHtml(it.itemNo)+'</td><td class="left">'+escHtml(it.desc)+'</td>';
-      h+='<td>'+escHtml(it.group||'—')+'</td><td>'+sv+'</td><td class="'+bc+'">'+bake+'</td>';
-      h+='<td></td></tr>';
+      h+='<td>'+escHtml(it.group||'—')+'</td><td>'+sv+'</td><td>'+(it.orders[di]||'—')+'</td>';
+      h+='<td>'+(soh[ri][di]!==null?'<span class="'+bc+'">'+bake+'</span>':'')+'</td></tr>';
     });
   });
   h+='</tbody></table>';
@@ -1355,8 +1361,8 @@ function handlePrintWeek(){
         const bake=calcBake(it.orders[di],soh[ri][di],boost);
         const bc=bake<0?'p-neg':bake===0?'p-zero':'p-bake';
         h+='<td>'+sv+'</td>';
-        h+='<td class="'+bc+'">'+bake+'</td>';
-        h+='<td></td>';
+        h+='<td>'+(it.orders[di]||'—')+'</td>';
+        h+='<td>'+(soh[ri][di]!==null?'<span class="'+bc+'">'+bake+'</span>':'')+'</td>';
       });
       h+='</tr>';
     });
