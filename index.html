@@ -1138,56 +1138,44 @@ function hasSpecialGroup(it){
   return rules && rules.length > 0;
 }
 function openSpecialGroups(){
-  const modal=document.getElementById('sgModal');
-  if(!modal) return;
-  // Get unique non-empty groups from items, with DOM fallback for old saved orders
-  let groups=[...new Set(items.map(function(i){return i.group;}).filter(function(g){return g&&g.trim();}))];
-  if(!groups.length){
-    // Fallback: read group header rows from the rendered table
-    const grpRows=document.querySelectorAll('#tbody .grp-row td');
-    const domGroups=new Set();
-    grpRows.forEach(function(td){ const t=td.textContent.trim(); if(t) domGroups.add(t); });
-    groups=[...domGroups];
-    // Also update items.group from the rendered table so future calls work
-    if(groups.length){
-      const rows=document.querySelectorAll('#tbody tr:not(.grp-row)');
-      let currentGroup='';
-      document.querySelectorAll('#tbody tr').forEach(function(tr){
-        if(tr.classList.contains('grp-row')){
-          currentGroup=tr.querySelector('td').textContent.trim();
-        } else {
-          // Find the item by itemNo (3rd td has group, 1st td has itemNo)
-          const itemNoCell=tr.querySelector('td:first-child');
-          if(itemNoCell){
-            const itemNo=itemNoCell.textContent.trim();
-            const it=items.find(function(i){return i.itemNo===itemNo;});
-            if(it&&!it.group) it.group=currentGroup;
-          }
-        }
-      });
-    }
+  var modal=document.getElementById('sgModal');
+  if(!modal){ alert('Special Groups modal not found'); return; }
+
+  // Get groups from items, fallback to DOM group header rows
+  var groups=[];
+  if(typeof items!=='undefined' && items.length){
+    groups=[...new Set(items.map(function(i){return i.group||'';}).filter(function(g){return g.trim();}))];
   }
   if(!groups.length){
-    document.getElementById('sgBody').innerHTML='<p style="text-align:center;color:#888;padding:24px">Import an order file first — special groups will appear here.</p>';
-    modal.style.display='flex';
-    return;
-  }
-  let html='<table class="sg-table"><thead><tr>';
-  html+='<th style="text-align:left">Group</th>';
-  html+='<th style="text-align:center;white-space:nowrap">Display In</th>';
-  DAY_LABELS.forEach(function(day){ html+='<th style="text-align:center">'+day+'</th>'; });
-  html+='<th></th>';
-  html+='</tr></thead><tbody>';
-  groups.forEach(function(g){
-    const rules=(specialGroupConfig[g]||[]);
-    const displayRules=rules.length?rules:[{sourceDays:[],displayDay:null}];
-    displayRules.forEach(function(rule){
-      html+=buildRuleRow(g,rule);
+    // Fallback: read from rendered group header rows in tbody
+    document.querySelectorAll('#tbody .grp-row td').forEach(function(td){
+      var t=td.textContent.trim();
+      if(t&&!groups.includes(t)) groups.push(t);
     });
-  });
-  html+='</tbody></table>';
-  document.getElementById('sgBody').innerHTML=html;
-  modal.style.display='flex';
+  }
+  if(!groups.length){
+    document.getElementById('sgBody').innerHTML='<p style="text-align:center;color:#888;padding:24px;font-size:13px">Import an order file first — ERB special groups will appear here.</p>';
+  } else {
+    var html='<table class="sg-table"><thead><tr>';
+    html+='<th style="text-align:left">Group</th>';
+    html+='<th style="text-align:center;white-space:nowrap">Display In</th>';
+    DAY_LABELS.forEach(function(day){ html+='<th style="text-align:center">'+day+'</th>'; });
+    html+='<th></th>';
+    html+='</tr></thead><tbody>';
+    groups.forEach(function(g){
+      var rules=(specialGroupConfig[g]||[]);
+      var displayRules=rules.length?rules:[{sourceDays:[],displayDay:null}];
+      displayRules.forEach(function(rule){
+        html+=buildRuleRow(g,rule);
+      });
+    });
+    html+='</tbody></table>';
+    document.getElementById('sgBody').innerHTML=html;
+  }
+
+  // Force modal visible — move to body to avoid any stacking context issues
+  if(modal.parentElement!==document.body) document.body.appendChild(modal);
+  modal.style.cssText='display:flex!important;position:fixed!important;inset:0!important;background:rgba(0,0,0,0.5)!important;z-index:99999!important;align-items:center!important;justify-content:center!important;padding:1rem!important;';
 }
 function buildRuleRow(g, rule){
   let html='<tr class="sg-rule-row" data-group="'+escHtml(g)+'">';
