@@ -1140,7 +1140,33 @@ function hasSpecialGroup(it){
 function openSpecialGroups(){
   const modal=document.getElementById('sgModal');
   if(!modal) return;
-  const groups=[...new Set(items.map(function(i){return i.group;}).filter(Boolean))];
+  // Get unique non-empty groups from items, with DOM fallback for old saved orders
+  let groups=[...new Set(items.map(function(i){return i.group;}).filter(function(g){return g&&g.trim();}))];
+  if(!groups.length){
+    // Fallback: read group header rows from the rendered table
+    const grpRows=document.querySelectorAll('#tbody .grp-row td');
+    const domGroups=new Set();
+    grpRows.forEach(function(td){ const t=td.textContent.trim(); if(t) domGroups.add(t); });
+    groups=[...domGroups];
+    // Also update items.group from the rendered table so future calls work
+    if(groups.length){
+      const rows=document.querySelectorAll('#tbody tr:not(.grp-row)');
+      let currentGroup='';
+      document.querySelectorAll('#tbody tr').forEach(function(tr){
+        if(tr.classList.contains('grp-row')){
+          currentGroup=tr.querySelector('td').textContent.trim();
+        } else {
+          // Find the item by itemNo (3rd td has group, 1st td has itemNo)
+          const itemNoCell=tr.querySelector('td:first-child');
+          if(itemNoCell){
+            const itemNo=itemNoCell.textContent.trim();
+            const it=items.find(function(i){return i.itemNo===itemNo;});
+            if(it&&!it.group) it.group=currentGroup;
+          }
+        }
+      });
+    }
+  }
   if(!groups.length){
     document.getElementById('sgBody').innerHTML='<p style="text-align:center;color:#888;padding:24px">Import an order file first — special groups will appear here.</p>';
     modal.style.display='flex';
@@ -1533,7 +1559,7 @@ function handlePrintWeek(){
 
 // Restore a snapshot back into the app
 function restoreSnapshot(snap){
-  items=snap.items.map(function(it){return {itemNo:it.itemNo,desc:it.desc,group:it.group,orders:it.orders.slice()};});
+  items=snap.items.map(function(it){return {itemNo:it.itemNo,desc:it.desc,group:it.group||it.specialGroup||'',orders:it.orders.slice()};});
   soh=snap.items.map(function(it){return it.soh?it.soh.slice():Array(7).fill(null);});
   storeName=snap.storeName||snap.store||currentStoreCode;
   if(snap.boosts){snap.boosts.forEach(function(b,i){const el=document.getElementById('b'+i);if(el)el.value=Math.round(b*100);});}
