@@ -1023,7 +1023,7 @@ function parseRows(rows){
     if(di===undefined)continue;
     const key=iItem>=0?c[iItem]:'';if(!key)continue;
     if(!raw[key])raw[key]={itemNo:key,vendorItem:iVItem>=0?c[iVItem]:'',desc:iDesc>=0?c[iDesc]:'',group:iGroup>=0?c[iGroup]:'',orders:Array(7).fill(0)};
-    raw[key].orders[di]=parseInt(c[iOrder])||0;
+    raw[key].orders[di]=Math.max(0,parseInt(c[iOrder])||0);
   }
   items=Object.values(raw);
   if(!items.length){showError('No valid rows found. Check that DayofWeek values are Mon/Tue/Wed etc.');return;}
@@ -1312,8 +1312,9 @@ function renderWeekView(){
         dhtml+='<td class="readonly" style="text-align:center">'+(it.orders[di]||'—')+'</td>';
         // BAKE
         const wEffOrder=hasSpecialGroup(it)?getEffectiveOrder(it,di):(it.orders[di]||0);
-        const wBake=soh[ri][di]!==null?calcBake(wEffOrder,soh[ri][di],boost):'';
-        const wBcls=soh[ri][di]!==null?(wBake<0?'bake neg':wBake===0?'bake zero':'bake'):'';
+        const wIsHidden=hasSpecialGroup(it)&&wEffOrder===0&&it.orders[di]>0;
+        const wBake=(!wIsHidden&&soh[ri][di]!==null)?calcBake(wEffOrder,soh[ri][di],boost):'';
+        const wBcls=(!wIsHidden&&soh[ri][di]!==null)?(wBake<0?'bake neg':wBake===0?'bake zero':'bake'):'';
         dhtml+='<td class="readonly" style="text-align:center">'+(wEffOrder||'—')+'</td>';
         dhtml+='<td class="'+wBcls+'" style="text-align:center">'+wBake+'</td>';
       });
@@ -1347,6 +1348,7 @@ function renderView(){
     if(g)dhtml+='<tr class="grp-row"><td colspan="6">'+escHtml(g)+'</td></tr>';
     gi.forEach(function({it,ri}){
       const effOrder=hasSpecialGroup(it)?getEffectiveOrder(it,di):(it.orders[di]||0);
+      const isHiddenDay=hasSpecialGroup(it)&&effOrder===0&&it.orders[di]>0;
       const bake=calcBake(effOrder,soh[ri][di],boost);
       const bcls=bake<0?'bake neg':bake===0?'bake zero':'bake';
       dhtml+='<tr><td class="left readonly" style="font-size:11px">'+escHtml(it.itemNo)+'</td>';
@@ -1354,8 +1356,8 @@ function renderView(){
       dhtml+='<td class="readonly" style="font-size:11px">'+escHtml(it.group||'—')+'</td>';
       dhtml+='<td><input class="soh-input" type="number" inputmode="numeric" id="soh_'+ri+'_'+di+'" placeholder="—" min="0" oninput="deskSOH('+ri+','+di+',this.value)" onkeydown="deskNav(event,'+ri+','+di+')"></td>';
       dhtml+='<td class="readonly">'+(effOrder||'—')+'</td>';
-      const bakeDisplay=soh[ri][di]!==null?bake:'';
-      const bclsFinal=soh[ri][di]!==null?bcls:'';
+      const bakeDisplay=(!isHiddenDay&&soh[ri][di]!==null)?bake:'';
+      const bclsFinal=(!isHiddenDay&&soh[ri][di]!==null)?bcls:'';
       dhtml+='<td class="'+bclsFinal+'" id="bake_'+ri+'_'+di+'">'+bakeDisplay+'</td></tr>';
     });
   });
@@ -1377,8 +1379,8 @@ function renderView(){
       mhtml+='<div class="mob-desc">'+escHtml(it.desc)+'</div></div><div class="mob-cells">';
       mhtml+='<div class="mob-cell"><div class="mob-cell-label">SOH</div><input class="mob-soh" type="number" inputmode="numeric" pattern="[0-9]*" value="'+sv+'" placeholder="—" min="0" oninput="mobSOH('+ri+','+di+',this.value)" onkeydown="mobNav(event,'+ri+','+di+')"></div>';
       mhtml+='<div class="mob-cell"><div class="mob-cell-label">ORDER</div><div class="mob-cell-val">'+(order||'—')+'</div></div>';
-      const mobBakeVal=soh[ri][di]!==null?bake:'';
-      const mobBakeCls=soh[ri][di]!==null?bc:'';
+      const mobBakeVal=(!mobIsHidden&&soh[ri][di]!==null)?bake:'';
+      const mobBakeCls=(!mobIsHidden&&soh[ri][di]!==null)?bc:'';
       mhtml+='<div class="mob-cell"><div class="mob-cell-label">BAKE</div><div class="'+mobBakeCls+'" id="mbake_'+ri+'_'+di+'">'+mobBakeVal+'</div></div>';
       mhtml+='</div></div>';
     });
