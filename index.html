@@ -1203,17 +1203,28 @@ function buildRuleRow(g, rule){
   return html;
 }
 function addRuleRow(g, afterRow){
-  const tbody=document.querySelector('#sgBody tbody');
+  // afterRow is the <tr> element, g is the group name
+  // Find the tbody — search both in sgBody and globally
+  var tbody=document.querySelector('#sgBody tbody');
+  if(!tbody){
+    // sgModal may have been moved to body — search from there
+    var sgBody=document.getElementById('sgBody');
+    if(sgBody) tbody=sgBody.querySelector('tbody');
+  }
   if(!tbody) return;
-  // Use a real table element so the browser parses <tr> correctly
-  const tmpTable=document.createElement('table');
-  const tmpTbody=document.createElement('tbody');
+  // Build a new row using a temporary table
+  var tmpTable=document.createElement('table');
+  var tmpTbody=document.createElement('tbody');
   tmpTable.appendChild(tmpTbody);
   tmpTbody.innerHTML=buildRuleRow(g,{sourceDays:[],displayDay:null});
-  const newRow=tmpTbody.firstElementChild;
+  var newRow=tmpTbody.firstElementChild;
   if(!newRow) return;
-  if(afterRow && afterRow.parentNode===tbody) tbody.insertBefore(newRow, afterRow.nextSibling);
-  else tbody.appendChild(newRow);
+  // Insert after the clicked row, or append to end
+  if(afterRow && afterRow.parentNode && afterRow.parentNode.tagName==='TBODY'){
+    afterRow.parentNode.insertBefore(newRow, afterRow.nextSibling);
+  } else {
+    tbody.appendChild(newRow);
+  }
 }
 function removeRuleRow(row){
   if(row) row.remove();
