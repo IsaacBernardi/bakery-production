@@ -275,6 +275,15 @@ td.bake.zero{color:#bbb;font-weight:400}
   }
   /* Avoid page breaks inside rows */
   #printArea tr{page-break-inside:avoid}
+  /* Week print: narrower columns to fit all 7 days landscape */
+  #printArea .pw-week{table-layout:fixed}
+  #printArea .pw-week thead tr:first-child th{font-size:8px;padding:3px 1px;background:#f0f0f0!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #printArea .pw-week thead tr:last-child th{font-size:7px;padding:2px 1px;color:#555;background:#f8f8f8!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #printArea .pw-week td{padding:2px 2px;font-size:8px}
+  #printArea .pw-week td.left{font-size:7px}
+  #printArea .pw-week th:nth-child(1){width:6%}
+  #printArea .pw-week th:nth-child(2){width:16%}
+  #printArea .pw-week th:nth-child(3){width:5%}
   /* Allow page breaks between groups */
   .p-grp{page-break-before:auto}
 }
@@ -560,6 +569,7 @@ tbody tr:hover{background:var(--s50)}
         <button class="btn" onclick="resetSOH()">Reset SOH</button>
         <button class="btn" onclick="exportCSV()">Export CSV</button>
         <button class="btn" onclick="handlePrint()">Print</button>
+        <button class="btn" onclick="handlePrintWeek()">Print Week</button>
         <button class="btn" onclick="doNewImport()">New Import</button>
       </div>
 
@@ -582,6 +592,7 @@ tbody tr:hover{background:var(--s50)}
         </div>
         <button class="btn btn-history" style="font-size:11px;padding:5px 10px" onclick="openHistory()">History</button>
         <button class="btn" style="font-size:11px;padding:5px 10px" onclick="handlePrint()">Print</button>
+        <button class="btn" style="font-size:11px;padding:5px 10px" onclick="handlePrintWeek()">Print Week</button>
         <button class="btn" style="font-size:11px;padding:5px 10px" onclick="resetSOH()">Reset SOH</button>
         <button class="btn" style="font-size:11px;padding:5px 10px" onclick="doNewImport()">New Import</button>
       </div>
@@ -1226,6 +1237,60 @@ function handlePrint(){
   document.getElementById('printArea').innerHTML=h;
   setTimeout(function(){window.print();},80);
 }
+function handlePrintWeek(){
+  if(!items.length){showToast('No order loaded to print.');return;}
+  const dateStr=new Date().toLocaleDateString('en-AU',{day:'numeric',month:'long',year:'numeric'});
+  const groups=[...new Set(items.map(function(i){return i.group;}))];
+
+  // Build header: Item No | Description | Group | then MON SOH/ORDER/BAKE ... SUN SOH/ORDER/BAKE
+  let h='<div class="ptitle">'+(currentStoreCode?escHtml(currentStoreCode)+' &mdash; ':'')+'Weekly Production Sheet';
+  h+='<span class="psub">'+dateStr+'</span></div>';
+  h+='<table class="pw-week"><thead>';
+
+  // Row 1: day spanning headers
+  h+='<tr><th class="left" rowspan="2">Item No</th><th class="left" rowspan="2">Description</th><th rowspan="2">Group</th>';
+  DAY_LABELS.forEach(function(day){
+    h+='<th colspan="3">'+day+'</th>';
+  });
+  h+='</tr>';
+
+  // Row 2: SOH / ORDER / BAKE sub-headers for each day
+  h+='<tr>';
+  DAY_LABELS.forEach(function(){
+    h+='<th>SOH</th><th>Order</th><th>BAKE</th>';
+  });
+  h+='</tr>';
+  h+='</thead><tbody>';
+
+  groups.forEach(function(g){
+    const ri_map=items.map(function(it,ri){return{it,ri};}).filter(function(x){return x.it.group===g;});
+    if(g){
+      const totalCols=3+DAY_LABELS.length*3;
+      h+='<tr class="p-grp"><td colspan="'+totalCols+'">'+escHtml(g)+'</td></tr>';
+    }
+    ri_map.forEach(function(obj){
+      const it=obj.it; const ri=obj.ri;
+      h+='<tr>';
+      h+='<td class="left" style="font-size:8px">'+escHtml(it.itemNo)+'</td>';
+      h+='<td class="left">'+escHtml(it.desc)+'</td>';
+      h+='<td>'+escHtml(it.group||'—')+'</td>';
+      DAY_LABELS.forEach(function(_,di){
+        const boost=(parseFloat(document.getElementById('b'+di)?.value)||0)/100;
+        const sv=soh[ri][di]!==null?soh[ri][di]:'—';
+        const bake=calcBake(it.orders[di],soh[ri][di],boost);
+        const bc=bake<0?'p-neg':bake===0?'p-zero':'p-bake';
+        h+='<td>'+sv+'</td>';
+        h+='<td>'+(it.orders[di]||'—')+'</td>';
+        h+='<td class="'+bc+'">'+bake+'</td>';
+      });
+      h+='</tr>';
+    });
+  });
+  h+='</tbody></table>';
+  document.getElementById('printArea').innerHTML=h;
+  setTimeout(function(){window.print();},80);
+}
+
 
 // Restore a snapshot back into the app
 function restoreSnapshot(snap){
