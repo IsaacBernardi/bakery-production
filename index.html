@@ -1304,7 +1304,7 @@ function handlePrint(){
       const bake=calcBake(it.orders[di],soh[ri][di],boost);
       const bc=bake<0?'p-neg':bake===0?'p-zero':'p-bake';
       h+='<tr><td class="left" style="font-size:9px">'+escHtml(it.itemNo)+'</td><td class="left">'+escHtml(it.desc)+'</td>';
-      h+='<td>'+escHtml(it.group||'—')+'</td><td>'+sv+'</td><td>'+(it.orders[di]||'—')+'</td>';
+      h+='<td>'+escHtml(it.group||'—')+'</td><td>'+sv+'</td><td class="'+bc+'">'+bake+'</td>';
       h+='<td></td></tr>';
     });
   });
@@ -1355,7 +1355,7 @@ function handlePrintWeek(){
         const bake=calcBake(it.orders[di],soh[ri][di],boost);
         const bc=bake<0?'p-neg':bake===0?'p-zero':'p-bake';
         h+='<td>'+sv+'</td>';
-        h+='<td>'+(it.orders[di]||'—')+'</td>';
+        h+='<td class="'+bc+'">'+bake+'</td>';
         h+='<td></td>';
       });
       h+='</tr>';
