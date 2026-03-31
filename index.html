@@ -53,6 +53,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
 .u-switch:hover{background:rgba(255,255,255,0.1);color:#fff}
 .u-panel{display:none}
 .u-panel.active{display:block;min-height:calc(100vh - 52px)}
+/* ── Special Groups Modal ── */
+#sgModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;align-items:center;justify-content:center;padding:1rem}
+.sg-modal-card{background:#fff;border-radius:16px;width:100%;max-width:720px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,0.2)}
+.sg-modal-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #eee}
+.sg-modal-header h2{font-size:16px;font-weight:700}
+.sg-modal-body{overflow-y:auto;padding:16px 20px;flex:1}
+.sg-modal-footer{padding:12px 20px;border-top:1px solid #eee;display:flex;gap:8px;justify-content:flex-end}
+.sg-group-row{padding:14px 0;border-bottom:1px solid #f0f0ee;display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.sg-group-row:last-child{border-bottom:none}
+.sg-group-name{font-weight:700;font-size:14px;color:#1a1a1a;min-width:160px;flex-shrink:0}
+.sg-days-label,.sg-display-label{font-size:11px;font-weight:600;color:#888;text-transform:uppercase;flex-shrink:0}
+.sg-checkboxes{display:flex;gap:8px;flex-wrap:wrap}
+.sg-day-cb{display:flex;align-items:center;gap:3px;font-size:12px;cursor:pointer;white-space:nowrap}
+.sg-day-cb input{width:14px;height:14px;cursor:pointer;accent-color:#1a1a1a}
+.sg-display-sel{padding:5px 8px;font-size:12px;border:1px solid #ddd;border-radius:7px;font-family:inherit}
 #sharedToast{position:fixed;bottom:24px;right:24px;background:#0f172a;color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:500;opacity:0;pointer-events:none;transition:opacity 0.3s;z-index:9999}
 #sharedToast.show{opacity:1}
 @media(max-width:768px){.u-header{flex-wrap:wrap}.u-nav{order:3;width:100%}.app-row{flex-direction:column}}
@@ -570,6 +585,7 @@ tbody tr:hover{background:var(--s50)}
         <button class="btn" onclick="exportCSV()">Export CSV</button>
         <button class="btn" onclick="handlePrint()">Print</button>
         <button class="btn" onclick="handlePrintWeek()">Print Week</button>
+        <button class="btn" onclick="openSpecialGroups()">&#x2699; Special Groups</button>
         <button class="btn" onclick="doNewImport()">New Import</button>
       </div>
 
@@ -593,6 +609,7 @@ tbody tr:hover{background:var(--s50)}
         <button class="btn btn-history" style="font-size:11px;padding:5px 10px" onclick="openHistory()">History</button>
         <button class="btn" style="font-size:11px;padding:5px 10px" onclick="handlePrint()">Print</button>
         <button class="btn" style="font-size:11px;padding:5px 10px" onclick="handlePrintWeek()">Print Week</button>
+        <button class="btn" style="font-size:11px;padding:5px 10px" onclick="openSpecialGroups()">&#x2699; Groups</button>
         <button class="btn" style="font-size:11px;padding:5px 10px" onclick="resetSOH()">Reset SOH</button>
         <button class="btn" style="font-size:11px;padding:5px 10px" onclick="doNewImport()">New Import</button>
       </div>
@@ -730,6 +747,21 @@ function checkPin() {
   }
 }
 
+async function saveSpecialGroupConfig(){
+  try{
+    await fetch(BLOB_BASE+'/settings/special-groups.json?'+SAS,{
+      method:'PUT',
+      headers:{'x-ms-blob-type':'BlockBlob','Content-Type':'application/json'},
+      body:JSON.stringify(specialGroupConfig)
+    });
+  }catch(e){ console.warn('Could not save special group config:',e.message); }
+}
+async function loadSpecialGroupConfig(){
+  try{
+    const res=await fetch(BLOB_BASE+'/settings/special-groups.json?'+SAS);
+    if(res.ok){ specialGroupConfig=await res.json(); }
+  }catch(e){ /* no config saved yet, use empty */ }
+}
 function launchBakery(store) {
   localStorage.setItem('bps_store', store);
   document.getElementById('userChip').textContent = 'Store: ' + store;
@@ -737,6 +769,7 @@ function launchBakery(store) {
   document.getElementById('appShell').style.display = 'flex';
   showPanel('bakery');
   if (typeof pickStore === 'function') pickStore(store);
+  loadSpecialGroupConfig();
 }
 
 function launchProduce(role, store) {
@@ -789,7 +822,7 @@ const DAY_MAP={mon:0,tue:1,wed:2,thu:3,fri:4,sat:5,sun:6};
 const DAY_LABELS=['MON','TUE','WED','THU','FRI','SAT','SUN'];
 
 // ══ STATE ═══════════════════════════════════════════
-let items=[],soh=[],storeName='',activeDayIndex=0,weekView=false;
+let items=[],soh=[],storeName='',activeDayIndex=0,weekView=false,specialGroupConfig={};
 let currentStoreCode='';
 
 function isMobile(){return window.innerWidth<=768;}
@@ -903,7 +936,7 @@ async function loadLastOrder(storeCode){
       restoreSnapshot(snap);
       showToast('Loaded last order: '+snap.label);
     }
-  }catch(e){console.log('No previous order found:',e.message);}
+  }catch(e){ /* no previous order - silent */ }
 }
 
 async function saveToBlob(label){
@@ -1082,6 +1115,74 @@ function syncMobBoost(){
 }
 
 // ══ RENDER ══════════════════════════════════════════
+
+// ── SPECIAL GROUP HELPERS ──
+function getEffectiveOrder(it, di){
+  const cfg = specialGroupConfig[it.group];
+  if(!cfg || !cfg.displayDay && cfg.displayDay!==0) return it.orders[di]||0;
+  // Only show the special sum on the display day
+  if(di !== cfg.displayDay) return 0; // hide on other days
+  // Sum orders for the ticked source days
+  return cfg.sourceDays.reduce(function(sum,sid){ return sum+(it.orders[sid]||0); }, 0);
+}
+function hasSpecialGroup(it){
+  const cfg = specialGroupConfig[it.group];
+  return cfg && cfg.sourceDays && cfg.sourceDays.length>0 && (cfg.displayDay!==undefined && cfg.displayDay!==null);
+}
+function openSpecialGroups(){
+  // Get all unique non-empty groups from current items
+  const groups=[...new Set(items.map(function(i){return i.group;}).filter(Boolean))];
+  if(!groups.length){ showToast('No special groups found — import an order first'); return; }
+  const modal=document.getElementById('sgModal');
+  if(!modal) return;
+  let html='';
+  groups.forEach(function(g){
+    const cfg=specialGroupConfig[g]||{sourceDays:[],displayDay:null};
+    html+='<div class="sg-group-row">';
+    html+='<div class="sg-group-name">'+escHtml(g)+'</div>';
+    html+='<div class="sg-days-label">Sum days:</div>';
+    html+='<div class="sg-checkboxes">';
+    DAY_LABELS.forEach(function(day,di){
+      const checked=cfg.sourceDays.includes(di)?'checked':'';
+      html+='<label class="sg-day-cb"><input type="checkbox" data-group="'+escHtml(g)+'" data-di="'+di+'" '+checked+'> '+day+'</label>';
+    });
+    html+='</div>';
+    html+='<div class="sg-display-label">Display in:</div>';
+    html+='<select class="sg-display-sel" data-group="'+escHtml(g)+'">';
+    html+='<option value="">— Normal (no grouping) —</option>';
+    DAY_LABELS.forEach(function(day,di){
+      const sel=(cfg.displayDay===di)?'selected':'';
+      html+='<option value="'+di+'" '+sel+'>'+day+' Avg Sales</option>';
+    });
+    html+='</select>';
+    html+='</div>';
+  });
+  document.getElementById('sgBody').innerHTML=html;
+  modal.style.display='flex';
+}
+function saveSpecialGroups(){
+  specialGroupConfig={};
+  const rows=document.getElementById('sgBody').querySelectorAll('.sg-group-row');
+  rows.forEach(function(row){
+    const sel=row.querySelector('.sg-display-sel');
+    const group=sel.getAttribute('data-group');
+    const displayVal=sel.value;
+    if(!displayVal) return; // no display day = normal behaviour
+    const displayDay=parseInt(displayVal);
+    const sourceDays=[];
+    row.querySelectorAll('input[type=checkbox]:checked').forEach(function(cb){
+      sourceDays.push(parseInt(cb.getAttribute('data-di')));
+    });
+    if(sourceDays.length) specialGroupConfig[group]={sourceDays,displayDay};
+  });
+  document.getElementById('sgModal').style.display='none';
+  if(weekView) renderWeekView(); else renderView();
+  saveSpecialGroupConfig();
+  showToast('Special group settings saved');
+}
+function closeSpecialGroups(){
+  document.getElementById('sgModal').style.display='none';
+}
 function renderWeekView(){
   if(!items.length)return;
   const groups=[...new Set(items.map(function(i){return i.group;}))];
@@ -1135,8 +1236,10 @@ function renderWeekView(){
         // Avg Sales
         dhtml+='<td class="readonly" style="text-align:center">'+(it.orders[di]||'—')+'</td>';
         // BAKE
-        const wBake=soh[ri][di]!==null?bake:'';
-        const wBcls=soh[ri][di]!==null?bcls:'';
+        const wEffOrder=hasSpecialGroup(it)?getEffectiveOrder(it,di):(it.orders[di]||0);
+        const wBake=soh[ri][di]!==null?calcBake(wEffOrder,soh[ri][di],boost):'';
+        const wBcls=soh[ri][di]!==null?(wBake<0?'bake neg':wBake===0?'bake zero':'bake'):'';
+        dhtml+='<td class="readonly" style="text-align:center">'+(wEffOrder||'—')+'</td>';
         dhtml+='<td class="'+wBcls+'" style="text-align:center">'+wBake+'</td>';
       });
       dhtml+='</tr>';
@@ -1168,13 +1271,14 @@ function renderView(){
     const gi=items.map(function(it,ri){return{it,ri};}).filter(function(x){return x.it.group===g;});
     if(g)dhtml+='<tr class="grp-row"><td colspan="6">'+escHtml(g)+'</td></tr>';
     gi.forEach(function({it,ri}){
-      const bake=calcBake(it.orders[di],soh[ri][di],boost);
+      const effOrder=hasSpecialGroup(it)?getEffectiveOrder(it,di):(it.orders[di]||0);
+      const bake=calcBake(effOrder,soh[ri][di],boost);
       const bcls=bake<0?'bake neg':bake===0?'bake zero':'bake';
       dhtml+='<tr><td class="left readonly" style="font-size:11px">'+escHtml(it.itemNo)+'</td>';
       dhtml+='<td class="desc">'+escHtml(it.desc)+'</td>';
       dhtml+='<td class="readonly" style="font-size:11px">'+escHtml(it.group||'—')+'</td>';
       dhtml+='<td><input class="soh-input" type="number" inputmode="numeric" id="soh_'+ri+'_'+di+'" placeholder="—" min="0" oninput="deskSOH('+ri+','+di+',this.value)" onkeydown="deskNav(event,'+ri+','+di+')"></td>';
-      dhtml+='<td class="readonly">'+(it.orders[di]||'—')+'</td>';
+      dhtml+='<td class="readonly">'+(effOrder||'—')+'</td>';
       const bakeDisplay=soh[ri][di]!==null?bake:'';
       const bclsFinal=soh[ri][di]!==null?bcls:'';
       dhtml+='<td class="'+bclsFinal+'" id="bake_'+ri+'_'+di+'">'+bakeDisplay+'</td></tr>';
@@ -1190,7 +1294,7 @@ function renderView(){
     const gi=items.map(function(it,ri){return{it,ri};}).filter(function(x){return x.it.group===g;});
     if(g)mhtml+='<div class="mob-group">'+escHtml(g)+'</div>';
     gi.forEach(function({it,ri}){
-      const order=it.orders[di]||0;
+      const order=hasSpecialGroup(it)?getEffectiveOrder(it,di):(it.orders[di]||0);
       const bake=calcBake(order,soh[ri][di],boost);
       const bc=bake<0?'mob-bake neg':bake===0?'mob-bake zero':'mob-bake';
       const sv=soh[ri][di]!==null?soh[ri][di]:'';
@@ -2489,5 +2593,23 @@ function poInit(role, store) {
 
 </script>
 <div id="printArea" style="display:none"></div>
+
+<!-- Special Groups Modal -->
+<div id="sgModal">
+  <div class="sg-modal-card">
+    <div class="sg-modal-header">
+      <h2>&#x2699;&#xFE0F; Special Group Settings</h2>
+      <button onclick="closeSpecialGroups()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#888">&#x2715;</button>
+    </div>
+    <div class="sg-modal-body">
+      <p style="font-size:12px;color:#888;margin-bottom:14px">For each ERB Special Group, select which days to sum and which day column to display the total in. Groups with no settings behave normally.</p>
+      <div id="sgBody"></div>
+    </div>
+    <div class="sg-modal-footer">
+      <button class="btn" onclick="closeSpecialGroups()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSpecialGroups()">Save Settings</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
