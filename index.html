@@ -1205,10 +1205,14 @@ function buildRuleRow(g, rule){
 function addRuleRow(g, afterRow){
   const tbody=document.querySelector('#sgBody tbody');
   if(!tbody) return;
-  const div=document.createElement('div');
-  div.innerHTML='<table><tbody>'+buildRuleRow(g,{sourceDays:[],displayDay:null})+'</tbody></table>';
-  const newRow=div.querySelector('tr');
-  if(afterRow && afterRow.parentNode) afterRow.parentNode.insertBefore(newRow, afterRow.nextSibling);
+  // Use a real table element so the browser parses <tr> correctly
+  const tmpTable=document.createElement('table');
+  const tmpTbody=document.createElement('tbody');
+  tmpTable.appendChild(tmpTbody);
+  tmpTbody.innerHTML=buildRuleRow(g,{sourceDays:[],displayDay:null});
+  const newRow=tmpTbody.firstElementChild;
+  if(!newRow) return;
+  if(afterRow && afterRow.parentNode===tbody) tbody.insertBefore(newRow, afterRow.nextSibling);
   else tbody.appendChild(newRow);
 }
 function removeRuleRow(row){
