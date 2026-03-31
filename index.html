@@ -1179,7 +1179,7 @@ function openSpecialGroups(){
 }
 function buildRuleRow(g, rule){
   var rid='sgr'+(window._sg_rowId=(window._sg_rowId||0)+1);
-  var html='<tr id="'+rid+'" data-group="'+escHtml(g)+'">';
+  var html='<tr id="'+rid+'" class="sg-rule-row" data-group="'+escHtml(g)+'">';
   html+='<td class="sg-group-cell">'+escHtml(g)+'</td>';
   html+='<td style="text-align:center"><select class="sg-display-sel" style="font-size:12px;padding:3px 6px">';
   html+='<option value="">— Off —</option>';
@@ -1234,26 +1234,29 @@ function removeRuleRow(btn){
 }
 function saveSpecialGroups(){
   specialGroupConfig={};
-  document.querySelectorAll('#sg-tbody tr.sg-rule-row, #sgBody .sg-rule-row').forEach(function(row){
+  var rowCount=0;
+  document.querySelectorAll('#sg-tbody tr, #sgBody .sg-rule-row').forEach(function(row){
+    rowCount++;
     const g=row.getAttribute('data-group');
     const displayVal=row.querySelector('.sg-display-sel').value;
-    if(!displayVal) return;
+    if(!displayVal){ console.log('Row skipped: no display day selected for',g); return; }
     const displayDay=parseInt(displayVal);
     const sourceDays=[];
     row.querySelectorAll('input[type=checkbox]:checked').forEach(function(cb){
       sourceDays.push(parseInt(cb.getAttribute('data-di')));
     });
-    if(!sourceDays.length) return;
+    if(!sourceDays.length){ console.log('Row skipped: no days checked for',g); return; }
     if(!specialGroupConfig[g]) specialGroupConfig[g]=[];
     specialGroupConfig[g].push({sourceDays,displayDay});
   });
-  document.getElementById('sgModal').style.display='none';
+  console.log('saveSpecialGroups: processed',rowCount,'rows, config=',JSON.stringify(specialGroupConfig));
+  document.getElementById('sgModal').style.cssText='display:none!important;';
   if(weekView) renderWeekView(); else renderView();
   saveSpecialGroupConfig();
-  showToast('Special group settings saved');
+  showToast('Special group settings saved — '+rowCount+' rule(s)');
 }
 function closeSpecialGroups(){
-  document.getElementById('sgModal').style.display='none';
+  document.getElementById('sgModal').style.cssText='display:none!important;';
 }
 function renderWeekView(){
   if(!items.length)return;
