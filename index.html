@@ -610,7 +610,7 @@ tbody tr:hover{background:var(--s50)}
         <table>
           <thead><tr id="desktopHead">
             <th class="left">Item No</th><th class="left">Description</th>
-            <th>Group</th><th>SOH</th><th>Order</th><th>BAKE</th>
+            <th>Group</th><th>SOH</th><th>Avg Sales</th><th>BAKE</th>
           </tr></thead>
           <tbody id="tbody"></tbody>
         </table>
@@ -709,7 +709,7 @@ tbody tr:hover{background:var(--s50)}
   </div>
 </div>
 <div id="sharedToast"></div>
-<script>
+<scr
 var BUYER_PIN = '1234';
 
 function goTo(id) {
@@ -789,7 +789,7 @@ const DAY_MAP={mon:0,tue:1,wed:2,thu:3,fri:4,sat:5,sun:6};
 const DAY_LABELS=['MON','TUE','WED','THU','FRI','SAT','SUN'];
 
 // ══ STATE ═══════════════════════════════════════════
-let items=[],soh=[],storeName='',activeDayIndex=0;
+let items=[],soh=[],storeName='',activeDayIndex=0,weekView=false;
 let currentStoreCode='';
 
 function isMobile(){return window.innerWidth<=768;}
@@ -1048,9 +1048,15 @@ function buildDayBar(){
     const btn=document.createElement('button');
     btn.className='day-btn'+(di===activeDayIndex?' active':'');
     btn.textContent=d;
-    btn.onclick=function(){activeDayIndex=di;buildDayBar();renderView();syncBoostDisplay();};
+    btn.onclick=function(){activeDayIndex=di;weekView=false;buildDayBar();renderView();syncBoostDisplay();};
     bar.appendChild(btn);
   });
+  // WEEK tab
+  const wBtn=document.createElement('button');
+  wBtn.className='day-btn'+(weekView?' active':'');
+  wBtn.textContent='WEEK';
+  wBtn.onclick=function(){weekView=true;buildDayBar();renderWeekView();};
+  bar.appendChild(wBtn);
 }
 
 function syncBoostDisplay(){
@@ -1076,6 +1082,75 @@ function syncMobBoost(){
 }
 
 // ══ RENDER ══════════════════════════════════════════
+function renderWeekView(){
+  if(!items.length)return;
+  const groups=[...new Set(items.map(function(i){return i.group;}))];
+
+  // Build two-row header: day spanning SOH/AvgSales/BAKE x 7
+  let head='<th class="left">Item No</th><th class="left">Description</th><th>Group</th>';
+  DAY_LABELS.forEach(function(day){
+    head+='<th colspan="3" style="text-align:center">'+day+'</th>';
+  });
+  // Second header row (sub-cols) — we use a separate row via JS
+  const headEl=document.getElementById('desktopHead');
+  if(headEl){
+    headEl.innerHTML=head;
+    // Add a second header row
+    const thead=headEl.parentElement;
+    const existingRow2=document.getElementById('desktopHead2');
+    if(existingRow2) existingRow2.remove();
+    const row2=document.createElement('tr');
+    row2.id='desktopHead2';
+    let sub='<td colspan="3"></td>'; // spacer for Item/Desc/Group
+    DAY_LABELS.forEach(function(){
+      sub+='<th style="font-size:10px;color:#888;font-weight:600;text-align:center">SOH</th>'+
+           '<th style="font-size:10px;color:#888;font-weight:600;text-align:center">Avg Sales</th>'+
+           '<th style="font-size:10px;color:#888;font-weight:600;text-align:center">BAKE</th>';
+    });
+    row2.innerHTML=sub;
+    thead.appendChild(row2);
+  }
+
+  let dhtml='';
+  groups.forEach(function(g){
+    const gi=items.map(function(it,ri){return{it,ri};}).filter(function(x){return x.it.group===g;});
+    const totalCols=3+DAY_LABELS.length*3;
+    if(g) dhtml+='<tr class="grp-row"><td colspan="'+totalCols+'">'+escHtml(g)+'</td></tr>';
+    gi.forEach(function(obj){
+      const it=obj.it; const ri=obj.ri;
+      dhtml+='<tr>';
+      dhtml+='<td class="left readonly" style="font-size:11px">'+escHtml(it.itemNo)+'</td>';
+      dhtml+='<td class="desc">'+escHtml(it.desc)+'</td>';
+      dhtml+='<td class="readonly" style="font-size:11px">'+escHtml(it.group||'—')+'</td>';
+      DAY_LABELS.forEach(function(_,di){
+        const boost=(parseFloat(document.getElementById('b'+di)?.value)||0)/100;
+        const bake=calcBake(it.orders[di],soh[ri][di],boost);
+        const bcls=bake<0?'bake neg':bake===0?'bake zero':'bake';
+        const sohVal=soh[ri][di]!==null?soh[ri][di]:'';
+        // SOH — editable input
+        dhtml+='<td><input class="soh-input" type="number" inputmode="numeric" style="width:52px" '+
+               'id="wsoh_'+ri+'_'+di+'" placeholder="—" min="0" value="'+sohVal+'" '+
+               'oninput="deskSOH('+ri+','+di+',this.value);renderWeekView()" '+
+               'onkeydown="deskNav(event,'+ri+','+di+')"></td>';
+        // Avg Sales
+        dhtml+='<td class="readonly" style="text-align:center">'+(it.orders[di]||'—')+'</td>';
+        // BAKE
+        dhtml+='<td class="'+bcls+'" style="text-align:center">'+bake+'</td>';
+      });
+      dhtml+='</tr>';
+    });
+  });
+  const tbody=document.getElementById('tbody');
+  if(tbody) tbody.innerHTML=dhtml;
+  // Populate SOH values
+  items.forEach(function(_,ri){
+    DAY_LABELS.forEach(function(_,di){
+      const el=document.getElementById('wsoh_'+ri+'_'+di);
+      if(el&&soh[ri][di]!==null) el.value=soh[ri][di];
+    });
+  });
+}
+
 function renderView(){
   if(!items.length)return;
   const di=activeDayIndex;
@@ -1084,7 +1159,7 @@ function renderView(){
   const head=document.getElementById('desktopHead');
   if(head){
     head.innerHTML='<th class="left">Item No</th><th class="left">Description</th><th>Group</th>'+
-      '<th>'+DAY_LABELS[di]+' SOH</th><th>'+DAY_LABELS[di]+' ORDER</th><th>'+DAY_LABELS[di]+' BAKE</th>';
+      '<th>'+DAY_LABELS[di]+' SOH</th><th>'+DAY_LABELS[di]+' Avg Sales</th><th>'+DAY_LABELS[di]+' BAKE</th>';
   }
   let dhtml='';
   groups.forEach(function(g){
@@ -1219,18 +1294,18 @@ function handlePrint(){
   const dateStr=new Date().toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   let h='<div class="ptitle">'+(currentStoreCode?escHtml(currentStoreCode)+' &mdash; ':'')+DAY_LABELS[di]+' Production Sheet';
   h+='<span class="psub">'+dateStr+(boostPct?' &nbsp;|&nbsp; Boost: +'+boostPct+'%':'')+'</span></div>';
-  h+='<table><thead><tr><th class="left">Item No</th><th class="left">Description</th><th>Group</th><th>SOH</th><th>Order</th><th>BAKE</th></tr></thead><tbody>';
+  h+='<table><thead><tr><th class="left">Item No</th><th class="left">Description</th><th>Group</th><th>SOH</th><th>Avg Sales</th><th>Bake/Order</th></tr></thead><tbody>';
   const groups=[...new Set(items.map(function(i){return i.group;}))];
   groups.forEach(function(g){
     const ri_map=items.map(function(it,ri){return{it,ri};}).filter(function(x){return x.it.group===g;});
     if(g)h+='<tr class="p-grp"><td colspan="6">'+escHtml(g)+'</td></tr>';
     ri_map.forEach(function({it,ri}){
-      const sv=soh[ri][di]!==null?soh[ri][di]:'—';
+      const sv=soh[ri][di]!==null?soh[ri][di]:'';
       const bake=calcBake(it.orders[di],soh[ri][di],boost);
       const bc=bake<0?'p-neg':bake===0?'p-zero':'p-bake';
       h+='<tr><td class="left" style="font-size:9px">'+escHtml(it.itemNo)+'</td><td class="left">'+escHtml(it.desc)+'</td>';
       h+='<td>'+escHtml(it.group||'—')+'</td><td>'+sv+'</td><td>'+(it.orders[di]||'—')+'</td>';
-      h+='<td class="'+bc+'">'+bake+'</td></tr>';
+      h+='<td></td></tr>';
     });
   });
   h+='</tbody></table>';
@@ -1257,7 +1332,7 @@ function handlePrintWeek(){
   // Row 2: SOH / ORDER / BAKE sub-headers for each day
   h+='<tr>';
   DAY_LABELS.forEach(function(){
-    h+='<th>SOH</th><th>Order</th><th>BAKE</th>';
+    h+='<th>SOH</th><th>Avg Sales</th><th>Bake/Order</th>';
   });
   h+='</tr>';
   h+='</thead><tbody>';
@@ -1276,12 +1351,12 @@ function handlePrintWeek(){
       h+='<td>'+escHtml(it.group||'—')+'</td>';
       DAY_LABELS.forEach(function(_,di){
         const boost=(parseFloat(document.getElementById('b'+di)?.value)||0)/100;
-        const sv=soh[ri][di]!==null?soh[ri][di]:'—';
+        const sv=soh[ri][di]!==null?soh[ri][di]:'';
         const bake=calcBake(it.orders[di],soh[ri][di],boost);
         const bc=bake<0?'p-neg':bake===0?'p-zero':'p-bake';
         h+='<td>'+sv+'</td>';
         h+='<td>'+(it.orders[di]||'—')+'</td>';
-        h+='<td class="'+bc+'">'+bake+'</td>';
+        h+='<td></td>';
       });
       h+='</tr>';
     });
@@ -1403,7 +1478,7 @@ function printHistoryOrder(idx){
     if(di>0)h+='<div style="page-break-before:always"></div>';
     h+='<div class="ptitle">'+(snap.store?escHtml(snap.store)+' &mdash; ':'')+dayLabel+' Production Sheet';
     h+='<span class="psub">'+dateStr+'</span></div>';
-    h+='<table><thead><tr><th class="left">Item No</th><th class="left">Description</th><th>Group</th><th>SOH</th><th>Order</th><th>BAKE</th></tr></thead><tbody>';
+    h+='<table><thead><tr><th class="left">Item No</th><th class="left">Description</th><th>Group</th><th>SOH</th><th>Avg Sales</th><th>Bake/Order</th></tr></thead><tbody>';
     const groups=[...new Set(snap.items.map(function(i){return i.group;}))];
     groups.forEach(function(g){
       if(g)h+='<tr class="p-grp"><td colspan="6">'+escHtml(g)+'</td></tr>';
@@ -2399,6 +2474,10 @@ function poInit(role, store) {
     }).catch(function() {
         if (!po_data) po_data = buildDefaultData();
         renderStoreEntry();
+    });
+}
+
+
     });
 }
 
