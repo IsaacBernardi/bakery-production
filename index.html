@@ -1124,14 +1124,12 @@ function getEffectiveOrder(it, di){
   // Find a rule where di is the display day
   const rule = rules.find(function(r){ return r.displayDay===di; });
   if(rule){
-    // Sum orders for source days in this rule
+    // This day is a display day — show the sum of source days
     return rule.sourceDays.reduce(function(sum,sid){ return sum+(it.orders[sid]||0); }, 0);
   }
-  // di is not a display day for any rule — check if it's a source day in any rule
-  // If it is, hide it (return 0) so the sum only shows on the display day
-  const isSourceDay = rules.some(function(r){ return r.sourceDays.includes(di) && r.displayDay!==di; });
-  if(isSourceDay) return 0;
-  return it.orders[di]||0;
+  // This day is NOT a display day for any rule
+  // If any rules are configured, hide all non-display days (return 0)
+  return 0;
 }
 function hasSpecialGroup(it){
   const rules = specialGroupConfig[it.group];
