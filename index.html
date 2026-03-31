@@ -1196,37 +1196,31 @@ function buildRuleRow(g, rule){
   });
   // Remove + Add buttons
   html+='<td style="white-space:nowrap;padding-left:8px">';
-  html+='<button class="hc-btn" data-grp="'+escHtml(g)+'" onclick="addRuleRow(this.dataset.grp,this.parentElement.parentElement)">+</button> ';
-  html+='<button class="hc-btn" onclick="removeRuleRow(this.parentElement.parentElement)">✕</button>';
+  html+='<button class="hc-btn" onclick="addRuleRow(this)">+</button> ';
+  html+='<button class="hc-btn" onclick="removeRuleRow(this)">✕</button>';
   html+='</td>';
   html+='</tr>';
   return html;
 }
-function addRuleRow(g, afterRow){
-  // afterRow is the <tr> element, g is the group name
-  // Find the tbody — search both in sgBody and globally
-  var tbody=document.querySelector('#sgBody tbody');
-  if(!tbody){
-    // sgModal may have been moved to body — search from there
-    var sgBody=document.getElementById('sgBody');
-    if(sgBody) tbody=sgBody.querySelector('tbody');
-  }
-  if(!tbody) return;
-  // Build a new row using a temporary table
+function addRuleRow(btn){
+  // btn is the + button element
+  var row=btn.closest('tr');
+  if(!row){ console.error('addRuleRow: no parent tr found'); return; }
+  var g=row.getAttribute('data-group');
+  if(!g){ console.error('addRuleRow: no data-group on tr'); return; }
+  var tbody=row.parentNode;
+  if(!tbody){ console.error('addRuleRow: no tbody'); return; }
+  // Build new row via real table element (div strips <tr>)
   var tmpTable=document.createElement('table');
-  var tmpTbody=document.createElement('tbody');
-  tmpTable.appendChild(tmpTbody);
-  tmpTbody.innerHTML=buildRuleRow(g,{sourceDays:[],displayDay:null});
-  var newRow=tmpTbody.firstElementChild;
-  if(!newRow) return;
-  // Insert after the clicked row, or append to end
-  if(afterRow && afterRow.parentNode && afterRow.parentNode.tagName==='TBODY'){
-    afterRow.parentNode.insertBefore(newRow, afterRow.nextSibling);
-  } else {
-    tbody.appendChild(newRow);
-  }
+  var tmpBody=document.createElement('tbody');
+  tmpTable.appendChild(tmpBody);
+  tmpBody.innerHTML=buildRuleRow(g,{sourceDays:[],displayDay:null});
+  var newRow=tmpBody.firstElementChild;
+  if(!newRow){ console.error('addRuleRow: buildRuleRow returned nothing'); return; }
+  tbody.insertBefore(newRow, row.nextSibling);
 }
-function removeRuleRow(row){
+function removeRuleRow(btn){
+  var row=btn.closest('tr');
   if(row) row.remove();
 }
 
