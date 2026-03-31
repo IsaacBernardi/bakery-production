@@ -1145,7 +1145,7 @@ function openSpecialGroups(){
 }
 function renderSpecialGroupsModal(showAll){
   window._sg_rowId=0;
-  // Groups from current import
+  // All groups from current import
   var importGroups=[];
   if(typeof items!=='undefined'&&items.length){
     var seen={};
@@ -1156,21 +1156,23 @@ function renderSpecialGroupsModal(showAll){
       var t=td.textContent.trim(); if(t&&!importGroups.includes(t)) importGroups.push(t);
     });
   }
-  // Groups from saved config not in current import
-  var configGroups=Object.keys(specialGroupConfig).filter(function(g){ return !importGroups.includes(g); });
-  var groups=showAll ? importGroups.concat(configGroups) : importGroups;
+  // Extra groups saved in config but not in current import
+  var extraConfigGroups=Object.keys(specialGroupConfig).filter(function(g){ return !importGroups.includes(g); });
+  // Groups with saved rules that ARE in the import
+  var savedImportGroups=importGroups.filter(function(g){ return specialGroupConfig[g]&&specialGroupConfig[g].length; });
+  // Default view: only groups that have saved rules (from import + extras)
+  // Show all: all import groups + extra config groups
+  var groups=showAll ? importGroups.concat(extraConfigGroups) : savedImportGroups.concat(extraConfigGroups);
 
   var html='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">';
-  html+='<p style="font-size:12px;color:#888;margin:0">Set which days to sum and where to display for each ERB Special Group.</p>';
-  if(configGroups.length){
-    html+='<button class="btn btn-outline btn-sm" onclick="renderSpecialGroupsModal('+(showAll?'false':'true')+')" style="font-size:11px">';
-    html+=showAll?'&#x1F4CB; Show import groups only':'&#x2699; Show all saved rules ('+configGroups.length+' more)';
-    html+='</button>';
-  }
+  html+='<p style="font-size:12px;color:#888;margin:0">Configure which days to sum and where to display for each ERB Special Group.</p>';
+  html+='<button class="btn btn-outline btn-sm" onclick="renderSpecialGroupsModal('+(showAll?'false':'true')+')" style="font-size:11px">';
+  html+=showAll?'&#x1F4CB; Show saved rules only':'&#x2630; Show all import groups';
+  html+='</button>';
   html+='</div>';
 
   if(!groups.length){
-    html+='<p style="text-align:center;color:#888;padding:24px;font-size:13px">Import an order file first.</p>';
+    html+='<p style="text-align:center;color:#888;padding:24px;font-size:13px">No groups found. Import an order file or configure rules first.</p>';
   } else {
     html+='<table class="sg-table"><thead><tr>';
     html+='<th style="text-align:left">Group</th>';
