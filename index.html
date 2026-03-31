@@ -1383,6 +1383,7 @@ function renderView(){
     gi.forEach(function({it,ri}){
       const order=hasSpecialGroup(it)?getEffectiveOrder(it,di):(it.orders[di]||0);
       const bake=calcBake(order,soh[ri][di],boost);
+      const mobIsHidden=hasSpecialGroup(it)&&order===0&&(it.orders[di]||0)>0;
       const bc=bake<0?'mob-bake neg':bake===0?'mob-bake zero':'mob-bake';
       const sv=soh[ri][di]!==null?soh[ri][di]:'';
       mhtml+='<div class="mob-row"><div class="mob-info"><div class="mob-item-no">'+escHtml(it.itemNo)+'</div>';
