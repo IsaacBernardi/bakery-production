@@ -1312,23 +1312,21 @@ function renderWeekView(){
       dhtml+='<td class="readonly" style="font-size:11px">'+escHtml(it.group||'—')+'</td>';
       DAY_LABELS.forEach(function(_,di){
         const boost=(parseFloat(document.getElementById('b'+di)?.value)||0)/100;
-        const bake=calcBake(it.orders[di],soh[ri][di],boost);
-        const bcls=bake<0?'bake neg':bake===0?'bake zero':'bake';
         const sohVal=soh[ri][di]!==null?soh[ri][di]:'';
-        // SOH — editable input
+        // Effective order (handles special groups)
+        const wEffOrder=hasSpecialGroup(it)?getEffectiveOrder(it,di):(it.orders[di]||0);
+        const wIsHidden=hasSpecialGroup(it)&&wEffOrder===0&&(it.orders[di]||0)>0;
+        // SOH — editable input (1 cell)
         dhtml+='<td><input class="soh-input" type="number" inputmode="numeric" style="width:52px" '+
                'id="wsoh_'+ri+'_'+di+'" placeholder="—" min="0" value="'+sohVal+'" '+
-               'oninput="deskSOH('+ri+','+di+',this.value);renderWeekView()" '+
+               'oninput="deskSOH('+ri+','+di+',this.value)" '+
                'onkeydown="deskNav(event,'+ri+','+di+')"></td>';
-        // Avg Sales
-        dhtml+='<td class="readonly" style="text-align:center">'+(it.orders[di]||'—')+'</td>';
-        // BAKE
-        const wEffOrder=hasSpecialGroup(it)?getEffectiveOrder(it,di):(it.orders[di]||0);
-        const wIsHidden=hasSpecialGroup(it)&&wEffOrder===0&&it.orders[di]>0;
+        // Avg Sales — effective order (1 cell)
+        dhtml+='<td class="readonly" style="text-align:center">'+(wEffOrder||'—')+'</td>';
+        // BAKE — conditional (1 cell)
         const wBake=(!wIsHidden&&soh[ri][di]!==null)?calcBake(wEffOrder,soh[ri][di],boost):'';
         const wBcls=(!wIsHidden&&soh[ri][di]!==null)?(wBake<0?'bake neg':wBake===0?'bake zero':'bake'):'';
-        dhtml+='<td class="readonly" style="text-align:center">'+(wEffOrder||'—')+'</td>';
-        dhtml+='<td class="'+wBcls+'" style="text-align:center">'+wBake+'</td>';
+        dhtml+='<td class="'+wBcls+'" id="wbake_'+ri+'_'+di+'" style="text-align:center">'+wBake+'</td>';
       });
       dhtml+='</tr>';
     });
