@@ -876,6 +876,13 @@ function pickStore(code){
 }
 function pickStoreDept(displayCode, blobKey){
   currentStoreCode=blobKey;
+  // Reset state so previous department's sheet doesn't show
+  items=[];soh=[];storeName='';weekView=false;activeDayIndex=0;
+  document.getElementById('dropZone').style.display='block';
+  document.getElementById('mainContent').style.display='none';
+  const db=document.getElementById('dayBar');if(db)db.innerHTML='';
+  const tb=document.getElementById('tbody');if(tb)tb.innerHTML='';
+  const ml=document.getElementById('mobileList');if(ml)ml.innerHTML='';
   showApp(displayCode);
   loadLastOrder(blobKey);
 }
