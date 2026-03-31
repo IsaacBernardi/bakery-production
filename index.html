@@ -1139,90 +1139,87 @@ function hasSpecialGroup(it){
 }
 function openSpecialGroups(){
   var modal=document.getElementById('sgModal');
-  if(!modal){ alert('Special Groups modal not found'); return; }
+  if(!modal){ alert('Modal not found'); return; }
+  window._sg_rowId=0;
 
-  // Get groups from items, fallback to DOM group header rows
   var groups=[];
   if(typeof items!=='undefined' && items.length){
-    groups=[...new Set(items.map(function(i){return i.group||'';}).filter(function(g){return g.trim();}))];
-  }
-  if(!groups.length){
-    // Fallback: read from rendered group header rows in tbody
-    document.querySelectorAll('#tbody .grp-row td').forEach(function(td){
-      var t=td.textContent.trim();
-      if(t&&!groups.includes(t)) groups.push(t);
+    var seen={};
+    items.forEach(function(i){
+      var g=(i.group||'').trim();
+      if(g && !seen[g]){ seen[g]=1; groups.push(g); }
     });
   }
   if(!groups.length){
-    document.getElementById('sgBody').innerHTML='<p style="text-align:center;color:#888;padding:24px;font-size:13px">Import an order file first — ERB special groups will appear here.</p>';
+    document.querySelectorAll('#tbody .grp-row td').forEach(function(td){
+      var t=td.textContent.trim();
+      if(t && !groups.includes(t)) groups.push(t);
+    });
+  }
+
+  var html='';
+  if(!groups.length){
+    html='<p style="text-align:center;color:#888;padding:24px;font-size:13px">Import an order file first.</p>';
   } else {
-    var html='<table class="sg-table"><thead><tr>';
+    html='<table class="sg-table"><thead><tr>';
     html+='<th style="text-align:left">Group</th>';
     html+='<th style="text-align:center;white-space:nowrap">Display In</th>';
     DAY_LABELS.forEach(function(day){ html+='<th style="text-align:center">'+day+'</th>'; });
     html+='<th></th>';
-    html+='</tr></thead><tbody>';
+    html+='</tr></thead><tbody id="sg-tbody">';
     groups.forEach(function(g){
       var rules=(specialGroupConfig[g]||[]);
-      var displayRules=rules.length?rules:[{sourceDays:[],displayDay:null}];
-      displayRules.forEach(function(rule){
-        html+=buildRuleRow(g,rule);
-      });
+      var rows=rules.length?rules:[{sourceDays:[],displayDay:null}];
+      rows.forEach(function(rule){ html+=buildRuleRow(g,rule); });
     });
     html+='</tbody></table>';
-    document.getElementById('sgBody').innerHTML=html;
   }
+  document.getElementById('sgBody').innerHTML=html;
 
-  // Force modal visible — move to body to avoid any stacking context issues
   if(modal.parentElement!==document.body) document.body.appendChild(modal);
   modal.style.cssText='display:flex!important;position:fixed!important;inset:0!important;background:rgba(0,0,0,0.5)!important;z-index:99999!important;align-items:center!important;justify-content:center!important;padding:1rem!important;';
 }
 function buildRuleRow(g, rule){
-  let html='<tr class="sg-rule-row" data-group="'+escHtml(g)+'">';
-  // Group name cell
+  var rid='sgr'+(window._sg_rowId=(window._sg_rowId||0)+1);
+  var html='<tr id="'+rid+'" data-group="'+escHtml(g)+'">';
   html+='<td class="sg-group-cell">'+escHtml(g)+'</td>';
-  // Display day dropdown
   html+='<td style="text-align:center"><select class="sg-display-sel" style="font-size:12px;padding:3px 6px">';
   html+='<option value="">— Off —</option>';
   DAY_LABELS.forEach(function(day,di){
-    const sel=(rule.displayDay===di)?'selected':'';
+    var sel=(rule.displayDay===di)?'selected':'';
     html+='<option value="'+di+'" '+sel+'>'+day+'</option>';
   });
   html+='</select></td>';
-  // Day checkboxes
   DAY_LABELS.forEach(function(day,di){
-    const checked=(rule.sourceDays||[]).includes(di)?'checked':'';
+    var checked=(rule.sourceDays||[]).includes(di)?'checked':'';
     html+='<td style="text-align:center"><input type="checkbox" '+checked+' data-di="'+di+'"></td>';
   });
-  // Remove + Add buttons
   html+='<td style="white-space:nowrap;padding-left:8px">';
-  html+='<button class="hc-btn" onclick="addRuleRow(this)">+</button> ';
-  html+='<button class="hc-btn" onclick="removeRuleRow(this)">✕</button>';
+  html+='<button class="hc-btn" data-rid="'+rid+'" data-grp="'+escHtml(g)+'" onclick="sgAddRow(this.dataset.rid,this.dataset.grp)">+</button> ';
+  html+='<button class="hc-btn" data-rid="'+rid+'" onclick="sgRemoveRow(this.dataset.rid)">&#x2715;</button>';
   html+='</td>';
   html+='</tr>';
   return html;
 }
-function addRuleRow(btn){
-  // btn is the + button element
-  var row=btn.closest('tr');
-  if(!row){ console.error('addRuleRow: no parent tr found'); return; }
-  var g=row.getAttribute('data-group');
-  if(!g){ console.error('addRuleRow: no data-group on tr'); return; }
-  var tbody=row.parentNode;
-  if(!tbody){ console.error('addRuleRow: no tbody'); return; }
-  // Build new row via real table element (div strips <tr>)
-  var tmpTable=document.createElement('table');
-  var tmpBody=document.createElement('tbody');
-  tmpTable.appendChild(tmpBody);
-  tmpBody.innerHTML=buildRuleRow(g,{sourceDays:[],displayDay:null});
-  var newRow=tmpBody.firstElementChild;
-  if(!newRow){ console.error('addRuleRow: buildRuleRow returned nothing'); return; }
-  tbody.insertBefore(newRow, row.nextSibling);
+function sgAddRow(afterId, g){
+  var afterRow=document.getElementById(afterId);
+  if(!afterRow){ console.error('sgAddRow: row not found:',afterId); return; }
+  var tbody=document.getElementById('sg-tbody');
+  if(!tbody){ console.error('sgAddRow: tbody not found'); return; }
+  // Build new row HTML and insert via range
+  var newHtml=buildRuleRow(g,{sourceDays:[],displayDay:null});
+  var range=document.createRange();
+  range.setStartAfter(afterRow);
+  range.collapse(true);
+  var frag=range.createContextualFragment(newHtml);
+  afterRow.parentNode.insertBefore(frag, afterRow.nextSibling);
 }
-function removeRuleRow(btn){
-  var row=btn.closest('tr');
+function addRuleRow(btn){ /* legacy — not used */ }
+function sgRemoveRow(id){
+  var row=document.getElementById(id);
   if(row) row.remove();
 }
+function removeRuleRow(btn){ /* legacy — not used */ }
 
 function addRuleRow(g){
   const block=[...document.querySelectorAll('.sg-group-block')].find(function(b){return b.getAttribute('data-group')===g;});
@@ -1239,7 +1236,7 @@ function removeRuleRow(btn){
 }
 function saveSpecialGroups(){
   specialGroupConfig={};
-  document.querySelectorAll('#sgBody .sg-rule-row').forEach(function(row){
+  document.querySelectorAll('#sg-tbody tr.sg-rule-row, #sgBody .sg-rule-row').forEach(function(row){
     const g=row.getAttribute('data-group');
     const displayVal=row.querySelector('.sg-display-sel').value;
     if(!displayVal) return;
