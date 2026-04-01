@@ -240,8 +240,9 @@ td.bake.zero{color:#bbb;font-weight:400}
 /* ── Print ── */
 #printArea{display:none}
 @media print{
-  /* Hide all UI elements, show only printArea */
-  #appShell,#s-choose,#s-bakery,#s-dept,#s-produce-role,#s-produce-store,#s-buyer-pin,#sharedToast,#sgModal{display:none!important}
+  /* Hide everything, show only printArea */
+  body > *{display:none!important}
+  #appContent,#appShell,#loginScreen,#sgModal{display:none!important}
   #printArea{display:block!important;position:static!important}
   
   @page{size:A4 landscape;margin:8mm}
@@ -2751,7 +2752,6 @@ function poInit(role, store) {
 
 
 </script>
-<div id="printArea" style="display:none"></div>
 
 <!-- Special Groups Modal -->
 <div id="sgModal">
@@ -2770,5 +2770,7 @@ function poInit(role, store) {
     </div>
   </div>
 </div>
+
+<div id="printArea" style="display:none"></div>
 </body>
 </html>
