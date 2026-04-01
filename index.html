@@ -1592,7 +1592,10 @@ function handlePrintWeek(){
   // Build header: Item No | Description | Group | then MON SOH/ORDER/BAKE ... SUN SOH/ORDER/BAKE
   let h='<div class="ptitle">'+(currentStoreCode?escHtml(currentStoreCode)+' &mdash; ':'')+'Weekly Production Sheet';
   h+='<span class="psub">'+dateStr+'</span></div>';
-  h+='<table class="pw-week"><thead>';
+  h+='<table class="pw-week">';
+  h+='<colgroup><col style="width:8%"><col style="width:17%"><col style="width:4%">';
+  DAY_LABELS.forEach(function(){ h+='<col style="width:3%"><col style="width:4%"><col style="width:4%">'; });
+  h+='</colgroup><thead>';
 
   // Row 1: day spanning headers
   h+='<tr><th class="left" rowspan="2">Item No</th><th class="left" rowspan="2">Description</th><th rowspan="2">Group</th>';
@@ -1642,9 +1645,10 @@ function handlePrintWeek(){
     'table{width:100%;border-collapse:collapse;table-layout:fixed}'+
     'thead{display:table-header-group}tbody{display:table-row-group}'+
     '.pw-week th{font-size:7px;padding:2px 1px;background:#f0f0f0;text-align:center;border:0.5px solid #ccc;word-break:break-word;vertical-align:bottom}'+
-    '.pw-week td{padding:2px 2px;font-size:8px;border:0.5px solid #ddd;text-align:center;vertical-align:middle}'+
-    '.pw-week td.left{text-align:left;font-size:7px;word-break:break-word}'+
+    '.pw-week td{padding:2px 1px;font-size:7px;border:0.5px solid #ddd;text-align:center;vertical-align:middle;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'+
+    '.pw-week td.left{text-align:left;font-size:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'+
     '.pw-week{table-layout:fixed;width:100%}'+
+    '.pw-week col.c-item{width:7%}.pw-week col.c-desc{width:18%}.pw-week col.c-grp{width:5%}'+
     '.ptitle{font-size:13px;font-weight:700;margin-bottom:6px;display:block}.psub{font-size:9px;color:#888;margin-left:10px}'+
     '.p-bake{font-weight:700;color:#1a56db}.p-neg{color:#d97706;font-weight:700}.p-zero{color:#bbb}'+
     '.p-grp td{background:#e8e8e8;font-size:7px;font-weight:700;color:#444;text-transform:uppercase}'+
