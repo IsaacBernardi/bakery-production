@@ -303,6 +303,8 @@ td.bake.zero{color:#bbb;font-weight:400}
   #printArea .pw-week th:nth-child(3){width:5%}
   /* Allow page breaks between groups */
   .p-grp{page-break-before:auto}
+  /* Always hide modal during print */
+  #sgModal{display:none!important}
 }
 
 #loginScreen{display:none!important}.app-header{display:none!important}#appContent{display:block!important}
@@ -1561,6 +1563,7 @@ function handlePrint(){
   });
   h+='</tbody></table>';
   document.getElementById('printArea').innerHTML=h;
+  var sgm=document.getElementById('sgModal');if(sgm)sgm.style.cssText='display:none!important;';
   setTimeout(function(){window.print();},80);
 }
 function handlePrintWeek(){
@@ -1614,6 +1617,7 @@ function handlePrintWeek(){
   });
   h+='</tbody></table>';
   document.getElementById('printArea').innerHTML=h;
+  var sgm=document.getElementById('sgModal');if(sgm)sgm.style.cssText='display:none!important;';
   setTimeout(function(){window.print();},80);
 }
 
