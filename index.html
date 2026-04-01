@@ -240,8 +240,8 @@ td.bake.zero{color:#bbb;font-weight:400}
 /* ── Print ── */
 #printArea{display:none}
 @media print{
-  /* Hide everything except printArea */
-  body > *{display:none!important}
+  /* Hide all UI elements, show only printArea */
+  #appShell,#s-choose,#s-bakery,#s-dept,#s-produce-role,#s-produce-store,#s-buyer-pin,#sharedToast,#sgModal{display:none!important}
   #printArea{display:block!important;position:static!important}
   
   @page{size:A4 landscape;margin:8mm}
