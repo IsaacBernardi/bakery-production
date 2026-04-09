@@ -1169,7 +1169,14 @@ function getEffectiveOrder(it, di){
     return rule.sourceDays.reduce(function(sum,sid){ return sum+(it.orders[sid]||0); }, 0);
   }
   // This day is NOT a display day for any rule
-  // If any rules are configured, hide all non-display days (return 0)
+  // Check if any rule has passThrough enabled — if so, show the raw day value
+  // unless this day is a source day in a non-passThrough rule
+  const isSourceInStrict = rules.some(function(r){
+    return !r.passThrough && r.sourceDays.includes(di);
+  });
+  if(isSourceInStrict) return 0;
+  const anyPassThrough = rules.some(function(r){ return r.passThrough; });
+  if(anyPassThrough) return it.orders[di]||0;
   return 0;
 }
 function hasSpecialGroup(it){
@@ -1219,6 +1226,7 @@ function renderSpecialGroupsModal(showAll){
     html+='<th style="text-align:left">Group</th>';
     html+='<th style="text-align:center;white-space:nowrap">Display In</th>';
     DAY_LABELS.forEach(function(day){ html+='<th style="text-align:center">'+day+'</th>'; });
+    html+='<th style="text-align:center;font-size:10px;white-space:nowrap" title="Pass-through: non-source days show their own day value">Pass-thru</th>';
     html+='<th></th>';
     html+='</tr></thead><tbody id="sg-tbody">';
     groups.forEach(function(g){
@@ -1245,6 +1253,8 @@ function buildRuleRow(g, rule){
     var checked=(rule.sourceDays||[]).includes(di)?'checked':'';
     html+='<td style="text-align:center"><input type="checkbox" '+checked+' data-di="'+di+'"></td>';
   });
+  var pt=(rule.passThrough===true)?'checked':'';
+  html+='<td style="text-align:center;padding:0 6px"><input type="checkbox" class="sg-passthrough" '+pt+'></td>';
   html+='<td style="white-space:nowrap;padding-left:8px">';
   html+='<button class="hc-btn" data-rid="'+rid+'" data-grp="'+escHtml(g)+'" onclick="sgAddRow(this.dataset.rid,this.dataset.grp)">+</button> ';
   html+='<button class="hc-btn" data-rid="'+rid+'" onclick="sgRemoveRow(this.dataset.rid)">&#x2715;</button>';
@@ -1295,12 +1305,14 @@ function saveSpecialGroups(){
     if(!displayVal){ console.log('Row skipped: no display day selected for',g); return; }
     const displayDay=parseInt(displayVal);
     const sourceDays=[];
-    row.querySelectorAll('input[type=checkbox]:checked').forEach(function(cb){
+    row.querySelectorAll('input[type=checkbox][data-di]:checked').forEach(function(cb){
       sourceDays.push(parseInt(cb.getAttribute('data-di')));
     });
     if(!sourceDays.length){ console.log('Row skipped: no days checked for',g); return; }
+    const ptEl=row.querySelector('.sg-passthrough');
+    const passThrough=ptEl?ptEl.checked:false;
     if(!specialGroupConfig[g]) specialGroupConfig[g]=[];
-    specialGroupConfig[g].push({sourceDays,displayDay});
+    specialGroupConfig[g].push({sourceDays,displayDay,passThrough});
   });
   console.log('saveSpecialGroups: processed',rowCount,'rows, config=',JSON.stringify(specialGroupConfig));
   document.getElementById('sgModal').style.cssText='display:none!important;';
@@ -1356,7 +1368,11 @@ function renderWeekView(){
         const sohVal=soh[ri][di]!==null?soh[ri][di]:'';
         // Effective order (handles special groups)
         const wEffOrder=hasSpecialGroup(it)?getEffectiveOrder(it,di):(it.orders[di]||0);
-        const wIsHidden=hasSpecialGroup(it)&&wEffOrder===0&&(it.orders[di]||0)>0;
+        const wIsHidden=hasSpecialGroup(it)&&wEffOrder===0&&(it.orders[di]||0)>0&&(function(){
+          var rules=specialGroupConfig[it.group]||[];
+          return rules.some(function(r){return !r.passThrough&&r.sourceDays.includes(di);}) ||
+                 (!rules.some(function(r){return r.passThrough;})&&!rules.some(function(r){return r.displayDay===di;}));
+        })();
         // SOH — editable input (1 cell)
         dhtml+='<td><input class="soh-input" type="number" inputmode="numeric" style="width:52px" '+
                'id="wsoh_'+ri+'_'+di+'" placeholder="—" min="0" value="'+sohVal+'" '+
@@ -1399,7 +1415,11 @@ function renderView(){
     if(g)dhtml+='<tr class="grp-row"><td colspan="6">'+escHtml(g)+'</td></tr>';
     gi.forEach(function({it,ri}){
       const effOrder=hasSpecialGroup(it)?getEffectiveOrder(it,di):(it.orders[di]||0);
-      const isHiddenDay=hasSpecialGroup(it)&&effOrder===0&&it.orders[di]>0;
+      const isHiddenDay=hasSpecialGroup(it)&&effOrder===0&&(it.orders[di]||0)>0&&(function(){
+        var rules=specialGroupConfig[it.group]||[];
+        return rules.some(function(r){return !r.passThrough&&r.sourceDays.includes(di);}) ||
+               (!rules.some(function(r){return r.passThrough;})&&!rules.some(function(r){return r.displayDay===di;}));
+      })();
       const bake=calcBake(effOrder,soh[ri][di],boost);
       const bcls=bake<0?'bake neg':bake===0?'bake zero':'bake';
       dhtml+='<tr><td class="left readonly" style="font-size:11px">'+escHtml(it.itemNo)+'</td>';
@@ -1424,7 +1444,11 @@ function renderView(){
     gi.forEach(function({it,ri}){
       const order=hasSpecialGroup(it)?getEffectiveOrder(it,di):(it.orders[di]||0);
       const bake=calcBake(order,soh[ri][di],boost);
-      const mobIsHidden=hasSpecialGroup(it)&&order===0&&(it.orders[di]||0)>0;
+      const mobIsHidden=hasSpecialGroup(it)&&order===0&&(it.orders[di]||0)>0&&(function(){
+        var rules=specialGroupConfig[it.group]||[];
+        return rules.some(function(r){return !r.passThrough&&r.sourceDays.includes(di);}) ||
+               (!rules.some(function(r){return r.passThrough;})&&!rules.some(function(r){return r.displayDay===di;}));
+      })();
       const bc=bake<0?'mob-bake neg':bake===0?'mob-bake zero':'mob-bake';
       const sv=soh[ri][di]!==null?soh[ri][di]:'';
       mhtml+='<div class="mob-row"><div class="mob-info"><div class="mob-item-no">'+escHtml(it.itemNo)+'</div>';
