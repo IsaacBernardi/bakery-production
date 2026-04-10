@@ -1631,7 +1631,7 @@ function handlePrintWeek(){
   // Row 2: SOH / ORDER / BAKE sub-headers for each day
   h+='<tr>';
   DAY_LABELS.forEach(function(){
-    h+='<th>SOH</th><th>Avg Sales</th><th>Bake/Order</th>';
+    h+='<th class="day-start">SOH</th><th>Avg Sales</th><th>Bake/Order</th>';
   });
   h+='</tr>';
   h+='</thead><tbody>';
@@ -1660,7 +1660,7 @@ function handlePrintWeek(){
         })();
         const bake=(!isHidden&&soh[ri][di]!==null)?calcBake(effOrder,soh[ri][di],boost):'';
         const bc=bake!==''?(bake<0?'p-neg':bake===0?'p-zero':'p-bake'):'';
-        h+='<td>'+sv+'</td>';
+        h+='<td class="day-start">'+sv+'</td>';
         h+='<td>'+(isHidden?'':effOrder||'—')+'</td>';
         h+='<td>'+(bake!==''?'<span class="'+bc+'">'+bake+'</span>':'')+'</td>';
       });;
