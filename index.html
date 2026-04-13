@@ -957,21 +957,10 @@ const VALID_STORES = ['FORBES','BLAYNEY','BATHURST','WYALONG'];
 function blobUrl(path){return BLOB_BASE+'/'+path+'?'+SAS;}
 
 async function loadLastOrder(storeCode){
-  // Try to load the most recent order for this store
+  // Always load current_order.json — updated on every save so always the latest
   try{
-    const listUrl=BLOB_BASE+'?restype=container&comp=list&prefix='+encodeURIComponent(storeCode.toLowerCase()+'/')+'&'+SAS;
-    const res=await fetch(listUrl);
-    if(!res.ok)return;
-    const text=await res.text();
-    // Parse blob names from XML
-    const names=[...text.matchAll(/<Name>([^<]+)<\/Name>/g)].map(m=>m[1]);
-    if(!names.length)return;
-    // Sort by name (newest first — we use timestamp in filename)
-    names.sort().reverse();
-    // Load the most recent order file
-    const latest=names.find(n=>n.endsWith('.json'));
-    if(!latest)return;
-    const dataRes=await fetch(BLOB_BASE+'/'+latest+'?'+SAS);
+    const currentPath=storeCode.toLowerCase()+'/current_order.json';
+    const dataRes=await fetch(BLOB_BASE+'/'+currentPath+'?'+SAS);
     if(!dataRes.ok)return;
     const snap=await dataRes.json();
     if(snap&&snap.items&&snap.items.length){
