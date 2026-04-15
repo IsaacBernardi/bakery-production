@@ -888,6 +888,9 @@ function pickStoreDept(displayCode, blobKey){
   const db=document.getElementById('dayBar');if(db)db.innerHTML='';
   const tb=document.getElementById('tbody');if(tb)tb.innerHTML='';
   const ml=document.getElementById('mobileList');if(ml)ml.innerHTML='';
+  // Clear save labels so previous dept label doesn't bleed through
+  const lbl=document.getElementById('orderLabel');if(lbl)lbl.value='';
+  const mlbl=document.getElementById('mobOrderLabel');if(mlbl)mlbl.value='';
   showApp(displayCode);
   loadLastOrder(blobKey);
 }
@@ -960,7 +963,7 @@ async function loadLastOrder(storeCode){
   // Always load current_order.json — updated on every save so always the latest
   try{
     const currentPath=storeCode.toLowerCase()+'/current_order.json';
-    const dataRes=await fetch(BLOB_BASE+'/'+currentPath+'?'+SAS);
+    const dataRes=await fetch(BLOB_BASE+'/'+currentPath+'?'+SAS+'&t='+Date.now());
     if(!dataRes.ok)return;
     const snap=await dataRes.json();
     if(snap&&snap.items&&snap.items.length){
