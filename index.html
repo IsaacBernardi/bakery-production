@@ -2928,6 +2928,7 @@ var hp_cookTimes = {  // start hours per day, up to 5 cooks
   SUN:[6,9,12,null,null]
 };
 var hp_cookCount = 3;
+var hp_boosts = {MON:5,TUE:5,WED:5,THU:5,FRI:5,SAT:5,SUN:5};
 
 function hp_selectStore(store){
   _hp_store = store;
@@ -3137,7 +3138,7 @@ function hp_render(){
   html += '</tr></thead><tbody>';
 
   HP_DAYS.forEach(function(day, di){
-    var boost = hp_boosts[day] !== undefined ? hp_boosts[day] : 5;
+    var boost = (hp_boosts && hp_boosts[day] !== undefined) ? hp_boosts[day] : 5;
     var cooks = hp_calcCooks(day, n);
     var total = cooks.reduce(function(s,ck){ return s+(ck?ck.qty:0); },0);
     var rowBg = di%2===0?'#fff':'#f8fafc';
