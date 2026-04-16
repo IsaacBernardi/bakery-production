@@ -3133,16 +3133,17 @@ function hp_render(){
   var allItems = {};
   HP_DAYS.forEach(function(day){
     Object.keys(hp_salesData[day] || {}).forEach(function(k){
-      allItems[k] = hp_salesData[day][k].desc || k;
+      if(!allItems[k]) allItems[k] = (hp_salesData[day][k] && hp_salesData[day][k].desc) ? hp_salesData[day][k].desc : k;
     });
   });
   var itemKeys = Object.keys(allItems);
-  var multiItem = itemKeys.length > 1;
+  if(!itemKeys.length) itemKeys = [null];
+  var showItemCol = itemKeys.length > 1 || (itemKeys.length === 1 && itemKeys[0] !== null);
 
-  // Header
+  // Header row 1
   var html = '<thead><tr style="background:#f8fafc">';
   html += '<th style="padding:8px 12px;text-align:left;font-size:12px;font-weight:700;color:#64748b;border-bottom:2px solid #e2e8f0;white-space:nowrap" rowspan="2">Day</th>';
-  if(multiItem) html += '<th style="padding:8px 6px;text-align:left;font-size:12px;font-weight:700;color:#64748b;border-bottom:2px solid #e2e8f0" rowspan="2">Item</th>';
+  if(showItemCol) html += '<th style="padding:8px 8px;text-align:left;font-size:12px;font-weight:700;color:#64748b;border-bottom:2px solid #e2e8f0" rowspan="2">Item</th>';
   html += '<th style="padding:8px 6px;text-align:center;font-size:12px;font-weight:700;color:#64748b;border-bottom:2px solid #e2e8f0;white-space:nowrap" rowspan="2">Boost %</th>';
   for(var ci=1; ci<=n; ci++){
     html += '<th colspan="2" style="padding:8px 4px;text-align:center;font-size:12px;font-weight:700;color:#64748b;border-bottom:1px solid #e2e8f0;border-left:2px solid #334155">Cook '+ci+'</th>';
@@ -3157,51 +3158,43 @@ function hp_render(){
 
   HP_DAYS.forEach(function(day, di){
     var boost = hp_boosts[day] !== undefined ? hp_boosts[day] : 5;
-    var rowsToShow = multiItem ? itemKeys : [null]; // null = sum all
-    var isFirstRow = true;
+    var rowBg = di%2===0?'#fff':'#f8fafc';
 
-    rowsToShow.forEach(function(itemKey, ii){
+    itemKeys.forEach(function(itemKey, ii){
       var cooks = hp_calcCooks(day, n, itemKey);
       var total = cooks.reduce(function(s,ck){ return s+(ck?ck.qty:0); },0);
-      var rowBg = di%2===0?'#fff':'#f8fafc';
-      var borderTop = (ii > 0) ? 'border-top:1px dashed #e2e8f0;' : '';
+      var borderTop = ii > 0 ? 'border-top:1px dashed #e2e8f0;' : '';
       html += '<tr style="background:'+rowBg+';'+borderTop+'">';
 
-      // Day cell — only on first item row, rowspan if multi-item
-      if(isFirstRow){
-        var rs = multiItem ? ' rowspan="'+rowsToShow.length+'"' : '';
+      // Day cell — rowspan across all items for this day, only on first item
+      if(ii === 0){
+        var rs = itemKeys.length > 1 ? ' rowspan="'+itemKeys.length+'"' : '';
         html += '<td style="padding:10px 12px;font-weight:700;font-size:13px;color:#1e293b;white-space:nowrap;vertical-align:middle"'+rs+'>'+day+'</td>';
-        if(!multiItem){
-          // Boost cell only for single item (for multi, we put it in each row or once)
-          html += '<td style="padding:6px 8px;text-align:center;vertical-align:middle">';
-          html += '<input type="number" value="'+boost+'" min="0" max="100" step="1" ';
-          html += 'style="width:52px;text-align:center;font-size:12px;border:1px solid #e2e8f0;border-radius:6px;padding:3px" ';
-          html += 'data-day="'+day+'" onchange="hp_updateBoost(this)" oninput="hp_updateBoost(this)">';
-          html += '</td>';
-        }
-        isFirstRow = false;
       }
 
-      if(multiItem){
-        // Item description
-        var desc = allItems[itemKey] || itemKey;
-        html += '<td style="padding:6px 8px;font-size:12px;color:#475569;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px" title="'+desc+'">'+desc+'</td>';
-        if(ii === 0){
-          // Boost cell with rowspan for all items in this day
-          html += '<td style="padding:6px 8px;text-align:center;vertical-align:middle" rowspan="'+rowsToShow.length+'">';
-          html += '<input type="number" value="'+boost+'" min="0" max="100" step="1" ';
-          html += 'style="width:52px;text-align:center;font-size:12px;border:1px solid #e2e8f0;border-radius:6px;padding:3px" ';
-          html += 'data-day="'+day+'" onchange="hp_updateBoost(this)" oninput="hp_updateBoost(this)">';
-          html += '</td>';
-        }
+      // Item description column
+      if(showItemCol){
+        var desc = allItems[itemKey] || itemKey || '';
+        html += '<td style="padding:6px 8px;font-size:12px;color:#475569;vertical-align:middle" title="'+desc+'">'+desc+'</td>';
       }
 
+      // Boost input — rowspan across all items, only on first item
+      if(ii === 0){
+        var brs = itemKeys.length > 1 ? ' rowspan="'+itemKeys.length+'"' : '';
+        html += '<td style="padding:6px 8px;text-align:center;vertical-align:middle"'+brs+'>';
+        html += '<input type="number" value="'+boost+'" min="0" max="100" step="1" ';
+        html += 'style="width:52px;text-align:center;font-size:12px;border:1px solid #e2e8f0;border-radius:6px;padding:3px" ';
+        html += 'data-day="'+day+'" onchange="hp_updateBoost(this)" oninput="hp_updateBoost(this)">';
+        html += '</td>';
+      }
+
+      // Cook columns — start time input only on first item row, just ready time on others
       for(var ci=0; ci<n; ci++){
         var cook = cooks[ci];
         var bl = 'border-left:2px solid #334155;';
         if(cook){
-          html += '<td style="'+bl+'padding:6px 4px;text-align:center">';
-          if(ii === 0 && !multiItem || ii === 0){
+          html += '<td style="'+bl+'padding:6px 4px;text-align:center;vertical-align:middle">';
+          if(ii === 0){
             html += '<input type="number" value="'+cook.start+'" min="0" max="23" step="0.5" ';
             html += 'style="width:52px;text-align:center;font-size:12px;border:1px solid #e2e8f0;border-radius:6px;padding:3px;margin-bottom:2px" ';
             html += 'data-day="'+day+'" data-ci="'+ci+'" onchange="hp_updateCookTime(this)" oninput="hp_updateCookTime(this)">';
@@ -3210,13 +3203,13 @@ function hp_render(){
             html += '<div style="font-size:11px;color:#94a3b8">'+hp_fmtTime(cook.finish)+'</div>';
           }
           html += '</td>';
-          html += '<td style="padding:8px 12px;text-align:center;font-size:18px;font-weight:700;color:#1e293b">'+cook.qty+'</td>';
+          html += '<td style="padding:8px 12px;text-align:center;font-size:16px;font-weight:700;color:#1e293b">'+cook.qty+'</td>';
         } else {
           html += '<td style="'+bl+'padding:6px 4px;text-align:center;color:#cbd5e1">—</td>';
-          html += '<td style="padding:8px 12px;text-align:center;color:#cbd5e1">—</td>';
+          html += '<td style="padding:8px;text-align:center;color:#cbd5e1">—</td>';
         }
       }
-      html += '<td style="padding:8px 12px;text-align:center;font-size:18px;font-weight:700;color:#1e293b;border-left:1px solid #e2e8f0;background:#f0f9ff">'+total+'</td>';
+      html += '<td style="padding:8px 12px;text-align:center;font-size:16px;font-weight:700;color:#1e293b;border-left:1px solid #e2e8f0;background:#f0f9ff">'+total+'</td>';
       html += '</tr>';
     });
   });
