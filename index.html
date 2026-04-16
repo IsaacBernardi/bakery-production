@@ -3064,14 +3064,13 @@ function hp_calcCooks(day, n){
     start = parseFloat(start);
     var finish = start + 1.5;
 
-    // Excel window logic:
-    // Cook 1: hour >= cook1_start  AND  hour < cook2_finish
-    // Cook N: hour >= cookN_finish  AND  hour < cookN+1_finish
-    // Last cook: hour >= lastCook_finish  (no upper bound)
+    // Window: Cook1 uses its own start as lower bound
+    //         Cook N (N>1) uses ITS OWN finish time as lower bound
+    //         Upper bound is always the NEXT cook's finish time (no upper for last cook)
     var lowerBound = ci === 0 ? start : finishTimes[ci];
     var upperBound = ci < n - 1 ? finishTimes[ci + 1] : null;
 
-    // Sum absolute sales in window
+    // Sum absolute sales quantities in window
     var totalSales = 0;
     Object.keys(sales).forEach(function(h){
       var hour = parseFloat(h);
@@ -3080,8 +3079,8 @@ function hp_calcCooks(day, n){
       }
     });
 
-    // ROUNDUP(totalSales, 0) / 4 * (1 + boost)  — matching Excel exactly
-    var qty = Math.ceil(totalSales) / 4 * (1 + boost);
+    // Formula: ROUNDUP(sum / 4 * (1 + boost), 0)
+    var qty = Math.ceil(totalSales / 4 * (1 + boost));
     result.push({start: start, finish: finish, qty: qty});
   }
   return result;
@@ -3153,7 +3152,7 @@ function hp_render(){
 
   HP_DAYS.forEach(function(day, di){
     var cooks = hp_calcCooks(day, n);
-    var total = cooks.reduce(function(s,ck){ return s+(ck?Math.ceil(ck.qty):0); },0);
+    var total = cooks.reduce(function(s,ck){ return s+(ck?ck.qty:0); },0);
     var rowBg = di%2===0?'#fff':'#f8fafc';
     html += '<tr style="background:'+rowBg+'">';
     html += '<td style="padding:10px 12px;font-weight:700;font-size:13px;color:#1e293b;white-space:nowrap">'+day+'</td>';
@@ -3170,7 +3169,7 @@ function hp_render(){
         html += 'data-day="'+day+'" data-ci="'+ci+'" onchange="hp_updateCookTime(this)" oninput="hp_updateCookTime(this)">';
         html += '<div style="font-size:11px;font-weight:600;color:#475569;margin-top:2px">'+hp_fmtTime(cook.finish)+'</div>';
         html += '</td>';
-        html += '<td style="padding:8px 12px;text-align:center;font-size:18px;font-weight:700;color:#1e293b">'+Math.ceil(cook.qty)+'</td>';
+        html += '<td style="padding:8px 12px;text-align:center;font-size:18px;font-weight:700;color:#1e293b">'+cook.qty+'</td>';
       } else {
         html += '<td style="'+bl+'padding:6px 4px;text-align:center">';
         html += '<div style="font-size:10px;color:#94a3b8;margin-bottom:2px">start</div>';
