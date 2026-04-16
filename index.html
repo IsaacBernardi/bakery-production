@@ -813,8 +813,6 @@ tbody tr:hover{background:var(--s50)}
         <button class="btn btn-outline btn-sm" onclick="hp_saveSchedule()">&#x1F4BE; Save Schedule</button>
         <button class="btn btn-outline btn-sm" onclick="hp_printSchedule()">&#x1F5A8; Print</button>
         <span style="flex:1"></span>
-        <label style="font-size:12px;font-weight:600;color:#475569">Boost %:</label>
-        <input type="number" id="hp-boost" value="5" min="0" max="100" style="width:60px;text-align:center" oninput="hp_render()">
       </div>
       <!-- Cook count selector -->
       <div style="display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap">
@@ -3120,55 +3118,50 @@ function hp_render(){
   var tbl = document.getElementById('hp-table');
   if(!tbl || !Object.keys(hp_salesData).length) return;
   var n = hp_cookCount || 3;
-  var boost = parseFloat((document.getElementById('hp-boost')||{}).value || 5);
 
-  // Header row 1: Cook labels spanning 2 cols (finish time + qty)
+  // Header
   var html = '<thead>';
   html += '<tr style="background:#f8fafc">';
   html += '<th style="padding:8px 12px;text-align:left;font-size:12px;font-weight:700;color:#64748b;border-bottom:2px solid #e2e8f0;white-space:nowrap" rowspan="2">Day</th>';
+  html += '<th style="padding:8px 6px;text-align:center;font-size:12px;font-weight:700;color:#64748b;border-bottom:2px solid #e2e8f0;white-space:nowrap" rowspan="2">Boost %</th>';
   for(var ci=1; ci<=n; ci++){
     html += '<th colspan="2" style="padding:8px 4px;text-align:center;font-size:12px;font-weight:700;color:#64748b;border-bottom:1px solid #e2e8f0;border-left:2px solid #334155">Cook '+ci+'</th>';
   }
   html += '<th style="padding:8px 12px;text-align:center;font-size:12px;font-weight:700;color:#64748b;border-bottom:2px solid #e2e8f0;border-left:1px solid #e2e8f0" rowspan="2">Total</th>';
-  html += '</tr>';
-
-  // Header row 2: sub-labels (finish time editable + qty)
-  html += '<tr style="background:#f1f5f9">';
+  html += '</tr><tr style="background:#f1f5f9">';
+  html += '<th style="padding:4px 6px;font-size:10px;color:#94a3b8;border-bottom:1px solid #e2e8f0"></th>';
   for(var ci=1; ci<=n; ci++){
-    html += '<th style="padding:4px 6px;font-size:10px;color:#94a3b8;border-bottom:1px solid #e2e8f0;border-left:2px solid #334155;text-align:center">Ready Time</th>';
+    html += '<th style="padding:4px 6px;font-size:10px;color:#94a3b8;border-bottom:1px solid #e2e8f0;border-left:2px solid #334155;text-align:center">Ready</th>';
     html += '<th style="padding:4px 6px;font-size:10px;color:#94a3b8;border-bottom:1px solid #e2e8f0;text-align:center">Qty</th>';
   }
   html += '</tr></thead><tbody>';
 
   HP_DAYS.forEach(function(day, di){
+    var boost = hp_boosts[day] !== undefined ? hp_boosts[day] : 5;
     var cooks = hp_calcCooks(day, n);
     var total = cooks.reduce(function(s,ck){ return s+(ck?ck.qty:0); },0);
     var rowBg = di%2===0?'#fff':'#f8fafc';
     html += '<tr style="background:'+rowBg+'">';
     html += '<td style="padding:10px 12px;font-weight:700;font-size:13px;color:#1e293b;white-space:nowrap">'+day+'</td>';
+    // Per-day boost input
+    html += '<td style="padding:6px 8px;text-align:center">';
+    html += '<input type="number" value="'+boost+'" min="0" max="100" step="1" ';
+    html += 'style="width:52px;text-align:center;font-size:12px;border:1px solid #e2e8f0;border-radius:6px;padding:3px" ';
+    html += 'data-day="'+day+'" onchange="hp_updateBoost(this)" oninput="hp_updateBoost(this)">';
+    html += '</td>';
 
     for(var ci=0; ci<n; ci++){
       var cook = cooks[ci];
       var bl = 'border-left:2px solid #334155;';
       if(cook){
-        // Show finish time (ready time) as editable — user sets start, finish = start+1.5
         html += '<td style="'+bl+'padding:6px 4px;text-align:center">';
-        html += '<div style="font-size:10px;color:#94a3b8;margin-bottom:2px">start</div>';
-        html += '<input type="number" value="'+cook.start+'" min="0" max="23" step="0.5" ';
-        html += 'style="width:54px;text-align:center;font-size:12px;border:1px solid #e2e8f0;border-radius:6px;padding:3px" ';
-        html += 'data-day="'+day+'" data-ci="'+ci+'" onchange="hp_updateCookTime(this)" oninput="hp_updateCookTime(this)">';
-        html += '<div style="font-size:11px;font-weight:600;color:#475569;margin-top:2px">'+hp_fmtTime(cook.finish)+'</div>';
+        html += '<div style="font-size:10px;color:#94a3b8;margin-bottom:2px">start '+cook.start+'</div>';
+        html += '<div style="font-size:12px;font-weight:600;color:#475569">'+hp_fmtTime(cook.finish)+'</div>';
         html += '</td>';
         html += '<td style="padding:8px 12px;text-align:center;font-size:18px;font-weight:700;color:#1e293b">'+cook.qty+'</td>';
       } else {
-        html += '<td style="'+bl+'padding:6px 4px;text-align:center">';
-        html += '<div style="font-size:10px;color:#94a3b8;margin-bottom:2px">start</div>';
-        html += '<input type="number" placeholder="—" min="0" max="23" step="0.5" ';
-        html += 'style="width:54px;text-align:center;font-size:12px;border:1px solid #e2e8f0;border-radius:6px;padding:3px;color:#94a3b8" ';
-        html += 'data-day="'+day+'" data-ci="'+ci+'" onchange="hp_updateCookTime(this)" oninput="hp_updateCookTime(this)">';
-        html += '<div style="font-size:11px;color:#cbd5e1;margin-top:2px">—</div>';
-        html += '</td>';
-        html += '<td style="padding:8px 12px;text-align:center;font-size:12px;color:#cbd5e1">—</td>';
+        html += '<td style="'+bl+'padding:6px 4px;text-align:center;color:#cbd5e1">—</td>';
+        html += '<td style="padding:8px 12px;text-align:center;color:#cbd5e1">—</td>';
       }
     }
     html += '<td style="padding:8px 12px;text-align:center;font-size:18px;font-weight:700;color:#1e293b;border-left:1px solid #e2e8f0;background:#f0f9ff">'+total+'</td>';
@@ -3186,13 +3179,18 @@ function hp_updateCookTime(input){
   hp_cookTimes[day][ci] = val==='' ? null : parseFloat(val);
   hp_render();
 }
+function hp_updateBoost(input){
+  var day = input.getAttribute('data-day');
+  hp_boosts[day] = parseFloat(input.value) || 0;
+  hp_render();
+}
 
 // ── Save / Load ──
 async function hp_saveSchedule(){
   if(!_hp_blobKey){ showToast('No store selected', 3000); return; }
   var ind = document.getElementById('hp-savingIndicator');
   if(ind) ind.style.display = 'inline';
-  var snap = { savedAt: new Date().toISOString(), store: _hp_store, dept: _hp_dept, cookTimes: hp_cookTimes, salesData: hp_salesData };
+  var snap = { savedAt: new Date().toISOString(), store: _hp_store, dept: _hp_dept, cookTimes: hp_cookTimes, boosts: hp_boosts, salesData: hp_salesData };
   var body = JSON.stringify(snap);
   var path = _hp_blobKey + '/hourly_schedule.json';
   try{
@@ -3212,6 +3210,7 @@ async function hp_loadFromCloud(){
     if(!res.ok) return;
     var snap = await res.json();
     if(snap.cookTimes) hp_cookTimes = snap.cookTimes;
+    if(snap.boosts) hp_boosts = snap.boosts;
     if(snap.salesData && Object.keys(snap.salesData).length){
       hp_salesData = snap.salesData;
       document.getElementById('hp-dropZone').style.display = 'none';
@@ -3245,6 +3244,7 @@ function hp_printSchedule(){
   h += '<th class="sub">Qty</th></tr></thead><tbody>';
   HP_DAYS.forEach(function(day, di){
     var cooks = hp_calcCooks(day, n);
+    var dayBoost = hp_boosts[day] !== undefined ? hp_boosts[day] : 5;
     var total = cooks.reduce(function(s,c){ return s+(c?c.qty:0); },0);
     h += '<tr' + (di%2?'':' class="alt"') + '><td class="left">' + day + '</td>';
     cooks.forEach(function(cook, ci){
