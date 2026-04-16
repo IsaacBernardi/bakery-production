@@ -3017,11 +3017,13 @@ function hp_parseRows(rows){
   var iDay  = fi('day');
   var iHour = fi('time');
   var iQty  = fi('quant');
+  var iItem = fi('itemno');
+  var iDesc = fi('desc');
   if(iDay < 0 || iHour < 0 || iQty < 0){
     showToast('Could not find required columns (DayofWeek, TIME OF DAY, Quantity)', 4000);
     return;
   }
-  // Reset sales data
+  // Reset: salesData[day] = { itemKey: {desc, hours: {hour: qty}} }
   hp_salesData = {};
   HP_DAYS.forEach(function(d){ hp_salesData[d] = {}; });
   for(var i = 1; i < rows.length; i++){
@@ -3033,9 +3035,11 @@ function hp_parseRows(rows){
     var day = HP_DAYS[dayIdx];
     var hour = Math.round(parseFloat(row[iHour]));
     if(isNaN(hour)) continue;
-    var qty = Math.abs(parseFloat(row[iQty]) || 0); // sales are negative in source
-    if(!hp_salesData[day]) hp_salesData[day] = {};
-    hp_salesData[day][hour] = (hp_salesData[day][hour] || 0) + qty;
+    var qty = Math.abs(parseFloat(row[iQty]) || 0);
+    var itemKey = (iItem >= 0 && row[iItem]) ? row[iItem] : (iDesc >= 0 ? row[iDesc] : 'Item');
+    var desc = iDesc >= 0 ? row[iDesc] : itemKey;
+    if(!hp_salesData[day][itemKey]) hp_salesData[day][itemKey] = {desc: desc, hours: {}};
+    hp_salesData[day][itemKey].hours[hour] = (hp_salesData[day][itemKey].hours[hour] || 0) + qty;
   }
   document.getElementById('hp-dropZone').style.display = 'none';
   document.getElementById('hp-mainContent').style.display = 'block';
@@ -3044,13 +3048,26 @@ function hp_parseRows(rows){
 }
 
 // ── Core calculation ──
-function hp_calcCooks(day, n){
+function hp_calcCooks(day, n, itemKey){
   n = n || hp_cookCount || 3;
   var times = (hp_cookTimes[day] || [6,10,14,null,null]).slice(0, n);
-  var sales = hp_salesData[day] || {};
   var boost = ((typeof hp_boosts !== 'undefined' && hp_boosts[day] !== undefined) ? hp_boosts[day] : 5) / 100;
 
-  // Finish times: each cook takes 1.5 hours
+  // Get sales hours — either for one item or sum all items
+  var dayData = hp_salesData[day] || {};
+  var sales = {};
+  if(itemKey){
+    sales = (dayData[itemKey] && dayData[itemKey].hours) ? dayData[itemKey].hours : {};
+  } else {
+    // Sum all items
+    Object.keys(dayData).forEach(function(k){
+      var hrs = dayData[k].hours || {};
+      Object.keys(hrs).forEach(function(h){
+        sales[h] = (sales[h] || 0) + hrs[h];
+      });
+    });
+  }
+
   var finishTimes = times.map(function(t){
     return (t !== null && t !== '' && t !== undefined) ? parseFloat(t) + 1.5 : null;
   });
@@ -3061,14 +3078,8 @@ function hp_calcCooks(day, n){
     if(start === null || start === '' || start === undefined){ result.push(null); continue; }
     start = parseFloat(start);
     var finish = start + 1.5;
-
-    // Window: Cook1 uses its own start as lower bound
-    //         Cook N (N>1) uses ITS OWN finish time as lower bound
-    //         Upper bound is always the NEXT cook's finish time (no upper for last cook)
     var lowerBound = ci === 0 ? start : finishTimes[ci];
     var upperBound = ci < n - 1 ? finishTimes[ci + 1] : null;
-
-    // Sum absolute sales quantities in window
     var totalSales = 0;
     Object.keys(sales).forEach(function(h){
       var hour = parseFloat(h);
@@ -3076,8 +3087,6 @@ function hp_calcCooks(day, n){
         totalSales += Math.abs(sales[h] || 0);
       }
     });
-
-    // Formula: ROUNDUP(sum / 4 * (1 + boost), 0)
     var qty = Math.round(totalSales / 4 * (1 + boost));
     result.push({start: start, finish: finish, qty: qty});
   }
@@ -3120,10 +3129,20 @@ function hp_render(){
   if(!tbl || !Object.keys(hp_salesData).length) return;
   var n = hp_cookCount || 3;
 
+  // Collect all unique items across all days
+  var allItems = {};
+  HP_DAYS.forEach(function(day){
+    Object.keys(hp_salesData[day] || {}).forEach(function(k){
+      allItems[k] = hp_salesData[day][k].desc || k;
+    });
+  });
+  var itemKeys = Object.keys(allItems);
+  var multiItem = itemKeys.length > 1;
+
   // Header
-  var html = '<thead>';
-  html += '<tr style="background:#f8fafc">';
+  var html = '<thead><tr style="background:#f8fafc">';
   html += '<th style="padding:8px 12px;text-align:left;font-size:12px;font-weight:700;color:#64748b;border-bottom:2px solid #e2e8f0;white-space:nowrap" rowspan="2">Day</th>';
+  if(multiItem) html += '<th style="padding:8px 6px;text-align:left;font-size:12px;font-weight:700;color:#64748b;border-bottom:2px solid #e2e8f0" rowspan="2">Item</th>';
   html += '<th style="padding:8px 6px;text-align:center;font-size:12px;font-weight:700;color:#64748b;border-bottom:2px solid #e2e8f0;white-space:nowrap" rowspan="2">Boost %</th>';
   for(var ci=1; ci<=n; ci++){
     html += '<th colspan="2" style="padding:8px 4px;text-align:center;font-size:12px;font-weight:700;color:#64748b;border-bottom:1px solid #e2e8f0;border-left:2px solid #334155">Cook '+ci+'</th>';
@@ -3137,42 +3156,69 @@ function hp_render(){
   html += '</tr></thead><tbody>';
 
   HP_DAYS.forEach(function(day, di){
-    var boost = (hp_boosts && hp_boosts[day] !== undefined) ? hp_boosts[day] : 5;
-    var cooks = hp_calcCooks(day, n);
-    var total = cooks.reduce(function(s,ck){ return s+(ck?ck.qty:0); },0);
-    var rowBg = di%2===0?'#fff':'#f8fafc';
-    html += '<tr style="background:'+rowBg+'">';
-    html += '<td style="padding:10px 12px;font-weight:700;font-size:13px;color:#1e293b;white-space:nowrap">'+day+'</td>';
-    // Per-day boost input
-    html += '<td style="padding:6px 8px;text-align:center">';
-    html += '<input type="number" value="'+boost+'" min="0" max="100" step="1" ';
-    html += 'style="width:52px;text-align:center;font-size:12px;border:1px solid #e2e8f0;border-radius:6px;padding:3px" ';
-    html += 'data-day="'+day+'" onchange="hp_updateBoost(this)" oninput="hp_updateBoost(this)">';
-    html += '</td>';
+    var boost = hp_boosts[day] !== undefined ? hp_boosts[day] : 5;
+    var rowsToShow = multiItem ? itemKeys : [null]; // null = sum all
+    var isFirstRow = true;
 
-    for(var ci=0; ci<n; ci++){
-      var cook = cooks[ci];
-      var bl = 'border-left:2px solid #334155;';
-      if(cook){
-        html += '<td style="'+bl+'padding:6px 4px;text-align:center">';
-        html += '<input type="number" value="'+cook.start+'" min="0" max="23" step="0.5" ';
-        html += 'style="width:52px;text-align:center;font-size:12px;border:1px solid #e2e8f0;border-radius:6px;padding:3px;margin-bottom:2px" ';
-        html += 'data-day="'+day+'" data-ci="'+ci+'" onchange="hp_updateCookTime(this)" oninput="hp_updateCookTime(this)">';
-        html += '<div style="font-size:11px;font-weight:600;color:#475569;margin-top:2px">'+hp_fmtTime(cook.finish)+'</div>';
-        html += '</td>';
-        html += '<td style="padding:8px 12px;text-align:center;font-size:18px;font-weight:700;color:#1e293b">'+cook.qty+'</td>';
-      } else {
-        html += '<td style="'+bl+'padding:6px 4px;text-align:center">';
-        html += '<input type="number" placeholder="—" min="0" max="23" step="0.5" ';
-        html += 'style="width:52px;text-align:center;font-size:12px;border:1px solid #e2e8f0;border-radius:6px;padding:3px;color:#94a3b8" ';
-        html += 'data-day="'+day+'" data-ci="'+ci+'" onchange="hp_updateCookTime(this)" oninput="hp_updateCookTime(this)">';
-        html += '<div style="font-size:11px;color:#cbd5e1;margin-top:2px">—</div>';
-        html += '</td>';
-        html += '<td style="padding:8px 12px;text-align:center;color:#cbd5e1">—</td>';
+    rowsToShow.forEach(function(itemKey, ii){
+      var cooks = hp_calcCooks(day, n, itemKey);
+      var total = cooks.reduce(function(s,ck){ return s+(ck?ck.qty:0); },0);
+      var rowBg = di%2===0?'#fff':'#f8fafc';
+      var borderTop = (ii > 0) ? 'border-top:1px dashed #e2e8f0;' : '';
+      html += '<tr style="background:'+rowBg+';'+borderTop+'">';
+
+      // Day cell — only on first item row, rowspan if multi-item
+      if(isFirstRow){
+        var rs = multiItem ? ' rowspan="'+rowsToShow.length+'"' : '';
+        html += '<td style="padding:10px 12px;font-weight:700;font-size:13px;color:#1e293b;white-space:nowrap;vertical-align:middle"'+rs+'>'+day+'</td>';
+        if(!multiItem){
+          // Boost cell only for single item (for multi, we put it in each row or once)
+          html += '<td style="padding:6px 8px;text-align:center;vertical-align:middle">';
+          html += '<input type="number" value="'+boost+'" min="0" max="100" step="1" ';
+          html += 'style="width:52px;text-align:center;font-size:12px;border:1px solid #e2e8f0;border-radius:6px;padding:3px" ';
+          html += 'data-day="'+day+'" onchange="hp_updateBoost(this)" oninput="hp_updateBoost(this)">';
+          html += '</td>';
+        }
+        isFirstRow = false;
       }
-    }
-    html += '<td style="padding:8px 12px;text-align:center;font-size:18px;font-weight:700;color:#1e293b;border-left:1px solid #e2e8f0;background:#f0f9ff">'+total+'</td>';
-    html += '</tr>';
+
+      if(multiItem){
+        // Item description
+        var desc = allItems[itemKey] || itemKey;
+        html += '<td style="padding:6px 8px;font-size:12px;color:#475569;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px" title="'+desc+'">'+desc+'</td>';
+        if(ii === 0){
+          // Boost cell with rowspan for all items in this day
+          html += '<td style="padding:6px 8px;text-align:center;vertical-align:middle" rowspan="'+rowsToShow.length+'">';
+          html += '<input type="number" value="'+boost+'" min="0" max="100" step="1" ';
+          html += 'style="width:52px;text-align:center;font-size:12px;border:1px solid #e2e8f0;border-radius:6px;padding:3px" ';
+          html += 'data-day="'+day+'" onchange="hp_updateBoost(this)" oninput="hp_updateBoost(this)">';
+          html += '</td>';
+        }
+      }
+
+      for(var ci=0; ci<n; ci++){
+        var cook = cooks[ci];
+        var bl = 'border-left:2px solid #334155;';
+        if(cook){
+          html += '<td style="'+bl+'padding:6px 4px;text-align:center">';
+          if(ii === 0 && !multiItem || ii === 0){
+            html += '<input type="number" value="'+cook.start+'" min="0" max="23" step="0.5" ';
+            html += 'style="width:52px;text-align:center;font-size:12px;border:1px solid #e2e8f0;border-radius:6px;padding:3px;margin-bottom:2px" ';
+            html += 'data-day="'+day+'" data-ci="'+ci+'" onchange="hp_updateCookTime(this)" oninput="hp_updateCookTime(this)">';
+            html += '<div style="font-size:11px;font-weight:600;color:#475569;margin-top:2px">'+hp_fmtTime(cook.finish)+'</div>';
+          } else {
+            html += '<div style="font-size:11px;color:#94a3b8">'+hp_fmtTime(cook.finish)+'</div>';
+          }
+          html += '</td>';
+          html += '<td style="padding:8px 12px;text-align:center;font-size:18px;font-weight:700;color:#1e293b">'+cook.qty+'</td>';
+        } else {
+          html += '<td style="'+bl+'padding:6px 4px;text-align:center;color:#cbd5e1">—</td>';
+          html += '<td style="padding:8px 12px;text-align:center;color:#cbd5e1">—</td>';
+        }
+      }
+      html += '<td style="padding:8px 12px;text-align:center;font-size:18px;font-weight:700;color:#1e293b;border-left:1px solid #e2e8f0;background:#f0f9ff">'+total+'</td>';
+      html += '</tr>';
+    });
   });
   html += '</tbody>';
   tbl.innerHTML = html;
@@ -3219,7 +3265,22 @@ async function hp_loadFromCloud(){
     if(snap.cookTimes) hp_cookTimes = snap.cookTimes;
     if(snap.boosts) hp_boosts = snap.boosts;
     if(snap.salesData && Object.keys(snap.salesData).length){
-      hp_salesData = snap.salesData;
+      // Migrate old format {day:{hour:qty}} to new {day:{itemKey:{desc,hours}}}
+      var firstDay = Object.keys(snap.salesData)[0];
+      var firstVal = firstDay ? snap.salesData[firstDay] : {};
+      var firstKey = Object.keys(firstVal)[0];
+      var isOldFormat = firstKey && typeof firstVal[firstKey] === 'number';
+      if(isOldFormat){
+        var migrated = {};
+        HP_DAYS.forEach(function(d){
+          migrated[d] = {};
+          var old = snap.salesData[d] || {};
+          if(Object.keys(old).length) migrated[d]['Item'] = {desc:'Item', hours: old};
+        });
+        hp_salesData = migrated;
+      } else {
+        hp_salesData = snap.salesData;
+      }
       document.getElementById('hp-dropZone').style.display = 'none';
       document.getElementById('hp-mainContent').style.display = 'block';
       hp_setCooks(hp_cookCount || 3);
@@ -3241,30 +3302,56 @@ function hp_printSchedule(){
   if(!Object.keys(hp_salesData).length){ showToast('No data to print', 3000); return; }
   var n = hp_cookCount || 3;
   var dateStr = new Date().toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-  var h = '<div style="font-size:14px;font-weight:700;margin-bottom:4px">&#x1F357; BBQ Chicken Cook Schedule &mdash; ' + _hp_store + ' / ' + _hp_dept + '</div>';
+
+  // Collect all unique items
+  var allItems = {};
+  HP_DAYS.forEach(function(day){
+    Object.keys(hp_salesData[day] || {}).forEach(function(k){
+      allItems[k] = hp_salesData[day][k].desc || k;
+    });
+  });
+  var itemKeys = Object.keys(allItems);
+  var multiItem = itemKeys.length > 1;
+
+  var h = '<div style="font-size:14px;font-weight:700;margin-bottom:4px">&#x1F357; Cook Schedule &mdash; ' + _hp_store + ' / ' + _hp_dept + '</div>';
   h += '<div style="font-size:10px;color:#888;margin-bottom:12px">' + dateStr + ' &nbsp;|&nbsp; Each cook takes 1.5 hours &nbsp;|&nbsp; ' + n + ' cooks</div>';
 
-  // Table header
-  h += '<table><thead><tr><th class="left">Day</th><th>Boost%</th>';
+  h += '<table><thead><tr><th class="left">Day</th>';
+  if(multiItem) h += '<th class="left">Item</th>';
+  h += '<th>Boost%</th>';
   for(var ci=1; ci<=n; ci++) h += '<th colspan="2" class="day-start">Cook '+ci+'</th>';
   h += '<th>Total</th></tr>';
-  h += '<tr><th></th><th></th>';
+  h += '<tr><th></th>';
+  if(multiItem) h += '<th></th>';
+  h += '<th></th>';
   for(var ci=1; ci<=n; ci++) h += '<th class="day-start sub">Ready</th><th class="sub">Qty</th>';
   h += '<th class="sub">Qty</th></tr></thead><tbody>';
 
   HP_DAYS.forEach(function(day, di){
     var dayBoost = hp_boosts[day] !== undefined ? hp_boosts[day] : 5;
-    var cooks = hp_calcCooks(day, n);
-    var total = cooks.reduce(function(s,c){ return s+(c?c.qty:0); },0);
-    h += '<tr'+(di%2?'':' class="alt"')+'><td class="left">'+day+'</td><td>'+dayBoost+'%</td>';
-    cooks.forEach(function(cook){
-      if(cook){
-        h += '<td class="day-start">'+hp_fmtTime(cook.finish)+'</td><td class="qty">'+cook.qty+'</td>';
-      } else {
-        h += '<td class="day-start grey">&mdash;</td><td class="grey">&mdash;</td>';
+    var rowsToShow = multiItem ? itemKeys : [null];
+    rowsToShow.forEach(function(itemKey, ii){
+      var cooks = hp_calcCooks(day, n, itemKey);
+      var total = cooks.reduce(function(s,c){ return s+(c?c.qty:0); },0);
+      h += '<tr'+(di%2?'':' class="alt"')+'>';
+      if(ii === 0){
+        var rs = multiItem ? ' rowspan="'+rowsToShow.length+'"' : '';
+        h += '<td class="left"'+rs+'>'+day+'</td>';
+        if(!multiItem) h += '<td>'+dayBoost+'%</td>';
       }
+      if(multiItem){
+        h += '<td class="left" style="font-size:8px">'+(allItems[itemKey]||itemKey)+'</td>';
+        if(ii === 0) h += '<td rowspan="'+rowsToShow.length+'">'+dayBoost+'%</td>';
+      }
+      cooks.forEach(function(cook){
+        if(cook){
+          h += '<td class="day-start">'+hp_fmtTime(cook.finish)+'</td><td class="qty">'+cook.qty+'</td>';
+        } else {
+          h += '<td class="day-start grey">&mdash;</td><td class="grey">&mdash;</td>';
+        }
+      });
+      h += '<td class="total">'+total+'</td></tr>';
     });
-    h += '<td class="total">'+total+'</td></tr>';
   });
   h += '</tbody></table>';
 
