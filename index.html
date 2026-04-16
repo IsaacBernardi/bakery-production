@@ -3097,24 +3097,15 @@ function hp_fmtTime(h){
 // ── Render ──
 function hp_setCooks(n){
   hp_cookCount = n;
-  // Set default start times based on cook count (matching Excel defaults)
+  // Always apply correct default start times for the selected cook count
   var defaults = {
     3: [6,10,14,null,null],
     4: [6,9,12,15,null],
     5: [6,9,12,14,16]
   };
-  // Only reset times if they haven't been customised (i.e. still at factory defaults)
-  // We always apply defaults when switching cook count to avoid confusion
-  var def = defaults[n] || [6,9,12,14,16];
+  var def = defaults[n] || [6,10,14,null,null];
   HP_DAYS.forEach(function(day){
-    // Keep existing times for the slots being used, reset extras
-    if(!hp_cookTimes[day]) hp_cookTimes[day] = def.slice();
-    // Fill/trim to 5 slots using new defaults for slots beyond current
-    for(var i=0; i<5; i++){
-      if(i < n && (hp_cookTimes[day][i] === null || hp_cookTimes[day][i] === undefined)){
-        hp_cookTimes[day][i] = def[i];
-      }
-    }
+    hp_cookTimes[day] = def.slice();
   });
   [3,4,5].forEach(function(x){
     var btn = document.getElementById('hp-tab-'+x);
