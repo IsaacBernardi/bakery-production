@@ -3239,29 +3239,32 @@ function hp_newImport(){
 // ── Print ──
 function hp_printSchedule(){
   if(!Object.keys(hp_salesData).length){ showToast('No data to print', 3000); return; }
-  // boost is per-day, handled in hp_calcCooks
+  var n = hp_cookCount || 3;
   var dateStr = new Date().toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   var h = '<div style="font-size:14px;font-weight:700;margin-bottom:4px">&#x1F357; BBQ Chicken Cook Schedule &mdash; ' + _hp_store + ' / ' + _hp_dept + '</div>';
-  h += '<div style="font-size:10px;color:#888;margin-bottom:12px">' + dateStr + ' &nbsp;|&nbsp; Boost: ' + boost + '% &nbsp;|&nbsp; Each cook takes 1.5 hours</div>';
-  h += '<table><thead><tr><th class="left">Day</th>';
-  for(var ci=1;ci<=5;ci++) h += '<th colspan="3" class="day-start">Cook ' + ci + '</th>';
+  h += '<div style="font-size:10px;color:#888;margin-bottom:12px">' + dateStr + ' &nbsp;|&nbsp; Each cook takes 1.5 hours &nbsp;|&nbsp; ' + n + ' cooks</div>';
+
+  // Table header
+  h += '<table><thead><tr><th class="left">Day</th><th>Boost%</th>';
+  for(var ci=1; ci<=n; ci++) h += '<th colspan="2" class="day-start">Cook '+ci+'</th>';
   h += '<th>Total</th></tr>';
-  h += '<tr><th></th>';
-  for(var ci=1;ci<=5;ci++) h += '<th class="day-start sub">Start</th><th class="sub">Finish</th><th class="sub">Qty</th>';
+  h += '<tr><th></th><th></th>';
+  for(var ci=1; ci<=n; ci++) h += '<th class="day-start sub">Ready</th><th class="sub">Qty</th>';
   h += '<th class="sub">Qty</th></tr></thead><tbody>';
+
   HP_DAYS.forEach(function(day, di){
-    var cooks = hp_calcCooks(day, n);
     var dayBoost = hp_boosts[day] !== undefined ? hp_boosts[day] : 5;
+    var cooks = hp_calcCooks(day, n);
     var total = cooks.reduce(function(s,c){ return s+(c?c.qty:0); },0);
-    h += '<tr' + (di%2?'':' class="alt"') + '><td class="left">' + day + '</td>';
-    cooks.forEach(function(cook, ci){
+    h += '<tr'+(di%2?'':' class="alt"')+'><td class="left">'+day+'</td><td>'+dayBoost+'%</td>';
+    cooks.forEach(function(cook){
       if(cook){
-        h += '<td class="day-start">' + hp_fmtTime(cook.start) + '</td><td>' + hp_fmtTime(cook.finish) + '</td><td class="qty">' + cook.qty + '</td>';
+        h += '<td class="day-start">'+hp_fmtTime(cook.finish)+'</td><td class="qty">'+cook.qty+'</td>';
       } else {
-        h += '<td class="day-start grey">&mdash;</td><td class="grey">&mdash;</td><td class="grey">&mdash;</td>';
+        h += '<td class="day-start grey">&mdash;</td><td class="grey">&mdash;</td>';
       }
     });
-    h += '<td class="total">' + total + '</td></tr>';
+    h += '<td class="total">'+total+'</td></tr>';
   });
   h += '</tbody></table>';
 
@@ -3279,7 +3282,7 @@ function hp_printSchedule(){
     '.total{font-weight:700;font-size:13px;background:#e0f2fe}' +
     '.alt td{background:#f8fafc}.grey{color:#bbb}' +
     'tr{page-break-inside:avoid}' +
-    '</style></head><body>' + h + '</body></html>');
+    '</style></head><body>'+h+'</body></html>');
   pw.document.close();
   pw.focus();
   setTimeout(function(){ pw.print(); pw.close(); }, 400);
