@@ -239,6 +239,7 @@ td.bake.zero{color:#bbb;font-weight:400}
 
 /* ── Print ── */
 #printArea{display:none}
+.hp-hidden{display:none!important}
 @media print{
   /* Hide everything except printArea */
   body > *{display:none!important}
@@ -775,7 +776,7 @@ tbody tr:hover{background:var(--s50)}
 
 
 <div class="u-panel" id="panel-hourly">
-  <div id="hp-appContent" style="display:none">
+  <div id="hp-appContent" class="hp-hidden">
     <!-- Header -->
     <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:#fff;border-bottom:1px solid #e2e8f0;position:sticky;top:0;z-index:50">
       <div style="display:flex;align-items:center;gap:10px">
@@ -833,7 +834,7 @@ tbody tr:hover{background:var(--s50)}
     </div>
   </div>
   <!-- Import zone shown by default -->
-  <div id="hp-noContent" style="display:flex;align-items:center;justify-content:center;min-height:50vh">
+  <div id="hp-noContent" class="hp-hidden" style="display:flex;align-items:center;justify-content:center;min-height:50vh">
     <p style="color:#94a3b8;font-size:14px">Select a store and department to begin.</p>
   </div>
 </div>
@@ -2952,10 +2953,17 @@ function hp_launch(store, dept){
     hp_salesData={};
     hp_cookTimes={MON:[6,9,12,null,null],TUE:[6,9,12,null,null],WED:[6,9,12,null,null],THU:[6,9,12,null,null],FRI:[6,9,12,null,null],SAT:[6,9,12,null,null],SUN:[6,9,12,null,null]};
     hp_activeDay='ALL';
+    console.log('hp_launch: showing UI elements');
     var nc=document.getElementById('hp-noContent');if(nc)nc.style.display='none';
-    var ac=document.getElementById('hp-appContent');if(ac)ac.style.display='block';
-    var dz=document.getElementById('hp-dropZone');if(dz)dz.style.display='block';
+    var ac=document.getElementById('hp-appContent');
+    console.log('hp-appContent found:', !!ac);
+    if(ac){ac.classList.remove('hp-hidden');ac.style.display='block';}
+    var dz=document.getElementById('hp-dropZone');
+    console.log('hp-dropZone found:', !!dz);
+    if(dz)dz.style.display='block';
     var mc=document.getElementById('hp-mainContent');if(mc)mc.style.display='none';
+    console.log('hp_launch: panel-hourly active:', document.getElementById('panel-hourly').classList.contains('active'));
+    console.log('hp_launch: hp-appContent display:', ac ? ac.style.display : 'N/A');
     hp_loadFromCloud();
   }catch(err){
     console.error('hp_launch error:',err.message,err.stack);
