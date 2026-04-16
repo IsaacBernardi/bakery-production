@@ -3296,46 +3296,51 @@ function hp_printSchedule(){
   var n = hp_cookCount || 3;
   var dateStr = new Date().toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
 
-  // Collect all unique items
+  // Collect all unique items — same logic as hp_render
   var allItems = {};
   HP_DAYS.forEach(function(day){
     Object.keys(hp_salesData[day] || {}).forEach(function(k){
-      allItems[k] = hp_salesData[day][k].desc || k;
+      if(!allItems[k]) allItems[k] = (hp_salesData[day][k] && hp_salesData[day][k].desc) ? hp_salesData[day][k].desc : k;
     });
   });
   var itemKeys = Object.keys(allItems);
-  var multiItem = itemKeys.length > 1;
+  if(!itemKeys.length) itemKeys = [null];
+  var showItemCol = itemKeys.length > 0 && itemKeys[0] !== null;
 
   var h = '<div style="font-size:14px;font-weight:700;margin-bottom:4px">&#x1F357; Cook Schedule &mdash; ' + _hp_store + ' / ' + _hp_dept + '</div>';
   h += '<div style="font-size:10px;color:#888;margin-bottom:12px">' + dateStr + ' &nbsp;|&nbsp; Each cook takes 1.5 hours &nbsp;|&nbsp; ' + n + ' cooks</div>';
 
+  // Table header
   h += '<table><thead><tr><th class="left">Day</th>';
-  if(multiItem) h += '<th class="left">Item</th>';
+  if(showItemCol) h += '<th class="left">Item</th>';
   h += '<th>Boost%</th>';
   for(var ci=1; ci<=n; ci++) h += '<th colspan="2" class="day-start">Cook '+ci+'</th>';
   h += '<th>Total</th></tr>';
   h += '<tr><th></th>';
-  if(multiItem) h += '<th></th>';
+  if(showItemCol) h += '<th></th>';
   h += '<th></th>';
   for(var ci=1; ci<=n; ci++) h += '<th class="day-start sub">Ready</th><th class="sub">Qty</th>';
   h += '<th class="sub">Qty</th></tr></thead><tbody>';
 
   HP_DAYS.forEach(function(day, di){
     var dayBoost = hp_boosts[day] !== undefined ? hp_boosts[day] : 5;
-    var rowsToShow = multiItem ? itemKeys : [null];
-    rowsToShow.forEach(function(itemKey, ii){
+    itemKeys.forEach(function(itemKey, ii){
       var cooks = hp_calcCooks(day, n, itemKey);
       var total = cooks.reduce(function(s,c){ return s+(c?c.qty:0); },0);
       h += '<tr'+(di%2?'':' class="alt"')+'>';
+      // Day cell — rowspan on first item
       if(ii === 0){
-        var rs = multiItem ? ' rowspan="'+rowsToShow.length+'"' : '';
+        var rs = itemKeys.length > 1 ? ' rowspan="'+itemKeys.length+'"' : '';
         h += '<td class="left"'+rs+'>'+day+'</td>';
-        if(!multiItem) h += '<td>'+dayBoost+'%</td>';
       }
-      if(multiItem){
-        h += '<td class="left" style="font-size:8px">'+(allItems[itemKey]||itemKey)+'</td>';
-        if(ii === 0) h += '<td rowspan="'+rowsToShow.length+'">'+dayBoost+'%</td>';
+      // Item description
+      if(showItemCol) h += '<td class="left" style="font-size:9px">'+(allItems[itemKey]||itemKey)+'</td>';
+      // Boost — rowspan on first item
+      if(ii === 0){
+        var brs = itemKeys.length > 1 ? ' rowspan="'+itemKeys.length+'"' : '';
+        h += '<td'+brs+'>'+dayBoost+'%</td>';
       }
+      // Cook columns
       cooks.forEach(function(cook){
         if(cook){
           h += '<td class="day-start">'+hp_fmtTime(cook.finish)+'</td><td class="qty">'+cook.qty+'</td>';
