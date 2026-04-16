@@ -2950,7 +2950,7 @@ function hp_launch(store, dept){
     document.getElementById('appShell').style.display='flex';
     showPanel('hourly');
     hp_salesData={};
-    hp_cookTimes={MON:[6,9,12,null,null],TUE:[6,9,12,null,null],WED:[6,9,12,null,null],THU:[6,9,12,null,null],FRI:[6,9,12,null,null],SAT:[6,9,12,null,null],SUN:[6,9,12,null,null]};
+    hp_cookTimes={MON:[6,9,12,14,16],TUE:[6,9,12,14,16],WED:[6,9,12,14,16],THU:[6,9,12,14,16],FRI:[6,9,12,14,16],SAT:[6,9,12,14,16],SUN:[6,9,12,14,16]};
     hp_cookCount=3;
     var nc=document.getElementById('hp-noContent');if(nc)nc.style.display='none';
     var ac=document.getElementById('hp-appContent');
@@ -3048,25 +3048,39 @@ function hp_parseRows(rows){
 // ── Core calculation ──
 function hp_calcCooks(day, n){
   n = n || hp_cookCount || 3;
-  var times = (hp_cookTimes[day] || []).slice(0, n);
-  // Pad/fill to exactly n slots
-  while(times.length < n) times.push(null);
+  var times = (hp_cookTimes[day] || [6,9,12,14,16]).slice(0, n);
   var sales = hp_salesData[day] || {};
   var boost = (parseFloat((document.getElementById('hp-boost')||{}).value || 5)) / 100;
-  var activeTimes = times.map(function(t,i){ return {t:t,i:i}; }).filter(function(x){ return x.t!==null && x.t!==''; });
-  activeTimes.sort(function(a,b){ return parseFloat(a.t)-parseFloat(b.t); });
-  var result = new Array(n).fill(null);
-  activeTimes.forEach(function(obj, ci){
-    var start = parseFloat(obj.t);
+
+  // Calculate finish times (each cook takes 1.5 hours)
+  var finishTimes = times.map(function(t){ return t !== null ? t + 1.5 : null; });
+
+  var result = [];
+  for(var ci = 0; ci < n; ci++){
+    var start = times[ci];
+    if(start === null || start === '') { result.push(null); continue; }
+    start = parseFloat(start);
     var finish = start + 1.5;
-    var nextStart = ci+1 < activeTimes.length ? parseFloat(activeTimes[ci+1].t) : 24;
+
+    // Time window:
+    // Lower bound: finish of previous cook (or cook1 start for first cook)
+    // Upper bound: finish of this cook (no upper bound for last cook)
+    var lowerBound = ci === 0 ? start : finishTimes[ci-1];
+    var upperBound = ci < n-1 ? finishTimes[ci] : null;  // null = no upper limit
+
+    // Sum sales where hour >= lowerBound AND (hour < upperBound OR no upper bound)
     var totalSales = 0;
-    for(var h=Math.floor(start); h<nextStart; h++){
-      totalSales += (sales[h] || 0);
-    }
-    var qty = Math.ceil(totalSales * (1+boost));
-    result[obj.i] = {start:start, finish:finish, qty:Math.max(0,qty)};
-  });
+    Object.keys(sales).forEach(function(h){
+      var hour = parseFloat(h);
+      if(hour >= lowerBound && (upperBound === null || hour < upperBound)){
+        totalSales += Math.abs(sales[h] || 0);
+      }
+    });
+
+    // Formula: ROUNDUP(totalSales, 0) / 4 * (1 + boost)
+    var qty = Math.ceil(totalSales) / 4 * (1 + boost);
+    result.push({start: start, finish: finish, qty: qty});
+  }
   return result;
 }
 
@@ -3082,6 +3096,25 @@ function hp_fmtTime(h){
 // ── Render ──
 function hp_setCooks(n){
   hp_cookCount = n;
+  // Set default start times based on cook count (matching Excel defaults)
+  var defaults = {
+    3: [6,10,14,null,null],
+    4: [6,9,12,15,null],
+    5: [6,9,12,14,16]
+  };
+  // Only reset times if they haven't been customised (i.e. still at factory defaults)
+  // We always apply defaults when switching cook count to avoid confusion
+  var def = defaults[n] || [6,9,12,14,16];
+  HP_DAYS.forEach(function(day){
+    // Keep existing times for the slots being used, reset extras
+    if(!hp_cookTimes[day]) hp_cookTimes[day] = def.slice();
+    // Fill/trim to 5 slots using new defaults for slots beyond current
+    for(var i=0; i<5; i++){
+      if(i < n && (hp_cookTimes[day][i] === null || hp_cookTimes[day][i] === undefined)){
+        hp_cookTimes[day][i] = def[i];
+      }
+    }
+  });
   [3,4,5].forEach(function(x){
     var btn = document.getElementById('hp-tab-'+x);
     if(!btn) return;
@@ -3128,7 +3161,7 @@ function hp_render(){
         html += 'data-day="'+day+'" data-ci="'+ci+'" data-n="'+n+'" onchange="hp_updateCookTime(this)" oninput="hp_updateCookTime(this)">';
         html += '</td>';
         html += '<td style="padding:8px 4px;text-align:center;font-size:12px;color:#64748b">'+hp_fmtTime(cook.finish)+'</td>';
-        html += '<td style="padding:8px 12px;text-align:center;font-size:15px;font-weight:700;color:#1e293b">'+cook.qty+'</td>';
+        html += '<td style="padding:8px 12px;text-align:center;font-size:15px;font-weight:700;color:#1e293b">'+cook.qty.toFixed(1)+'</td>';
       } else {
         html += '<td style="'+bl+'padding:8px 4px;text-align:center">';
         html += '<input type="number" placeholder="—" min="0" max="23" step="0.5" style="width:58px;text-align:center;font-size:12px;border:1px solid #e2e8f0;border-radius:6px;padding:3px;color:#94a3b8" ';
@@ -3138,7 +3171,7 @@ function hp_render(){
         html += '<td style="padding:8px 12px;text-align:center;font-size:12px;color:#cbd5e1">—</td>';
       }
     }
-    html += '<td style="padding:8px 12px;text-align:center;font-size:16px;font-weight:700;color:#1e293b;border-left:1px solid #e2e8f0;background:#f0f9ff">'+total+'</td>';
+    html += '<td style="padding:8px 12px;text-align:center;font-size:16px;font-weight:700;color:#1e293b;border-left:1px solid #e2e8f0;background:#f0f9ff">'+total.toFixed(1)+'</td>';
     html += '</tr>';
   });
   html += '</tbody>';
