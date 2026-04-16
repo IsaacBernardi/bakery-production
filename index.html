@@ -3040,8 +3040,7 @@ function hp_parseRows(rows){
   }
   document.getElementById('hp-dropZone').style.display = 'none';
   document.getElementById('hp-mainContent').style.display = 'block';
-  hp_setDay('ALL');
-  hp_render();
+  hp_setCooks(hp_cookCount || 3);
   showToast('Sales data imported');
 }
 
@@ -3226,8 +3225,7 @@ async function hp_loadFromCloud(){
       hp_salesData = snap.salesData;
       document.getElementById('hp-dropZone').style.display = 'none';
       document.getElementById('hp-mainContent').style.display = 'block';
-      hp_setDay('ALL');
-      hp_render();
+      hp_setCooks(hp_cookCount || 3);
       showToast('Loaded saved schedule');
     }
   }catch(e){ /* no saved schedule */ }
