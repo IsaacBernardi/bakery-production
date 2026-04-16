@@ -3048,7 +3048,7 @@ function hp_calcCooks(day, n){
   n = n || hp_cookCount || 3;
   var times = (hp_cookTimes[day] || [6,10,14,null,null]).slice(0, n);
   var sales = hp_salesData[day] || {};
-  var boost = (parseFloat((document.getElementById('hp-boost')||{}).value || 5)) / 100;
+  var boost = ((typeof hp_boosts !== 'undefined' && hp_boosts[day] !== undefined) ? hp_boosts[day] : 5) / 100;
 
   // Finish times: each cook takes 1.5 hours
   var finishTimes = times.map(function(t){
@@ -3156,12 +3156,19 @@ function hp_render(){
       var bl = 'border-left:2px solid #334155;';
       if(cook){
         html += '<td style="'+bl+'padding:6px 4px;text-align:center">';
-        html += '<div style="font-size:10px;color:#94a3b8;margin-bottom:2px">start '+cook.start+'</div>';
-        html += '<div style="font-size:12px;font-weight:600;color:#475569">'+hp_fmtTime(cook.finish)+'</div>';
+        html += '<input type="number" value="'+cook.start+'" min="0" max="23" step="0.5" ';
+        html += 'style="width:52px;text-align:center;font-size:12px;border:1px solid #e2e8f0;border-radius:6px;padding:3px;margin-bottom:2px" ';
+        html += 'data-day="'+day+'" data-ci="'+ci+'" onchange="hp_updateCookTime(this)" oninput="hp_updateCookTime(this)">';
+        html += '<div style="font-size:11px;font-weight:600;color:#475569;margin-top:2px">'+hp_fmtTime(cook.finish)+'</div>';
         html += '</td>';
         html += '<td style="padding:8px 12px;text-align:center;font-size:18px;font-weight:700;color:#1e293b">'+cook.qty+'</td>';
       } else {
-        html += '<td style="'+bl+'padding:6px 4px;text-align:center;color:#cbd5e1">—</td>';
+        html += '<td style="'+bl+'padding:6px 4px;text-align:center">';
+        html += '<input type="number" placeholder="—" min="0" max="23" step="0.5" ';
+        html += 'style="width:52px;text-align:center;font-size:12px;border:1px solid #e2e8f0;border-radius:6px;padding:3px;color:#94a3b8" ';
+        html += 'data-day="'+day+'" data-ci="'+ci+'" onchange="hp_updateCookTime(this)" oninput="hp_updateCookTime(this)">';
+        html += '<div style="font-size:11px;color:#cbd5e1;margin-top:2px">—</div>';
+        html += '</td>';
         html += '<td style="padding:8px 12px;text-align:center;color:#cbd5e1">—</td>';
       }
     }
@@ -3233,7 +3240,7 @@ function hp_newImport(){
 // ── Print ──
 function hp_printSchedule(){
   if(!Object.keys(hp_salesData).length){ showToast('No data to print', 3000); return; }
-  var boost = parseFloat((document.getElementById('hp-boost')||{}).value || 5);
+  // boost is per-day, handled in hp_calcCooks
   var dateStr = new Date().toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   var h = '<div style="font-size:14px;font-weight:700;margin-bottom:4px">&#x1F357; BBQ Chicken Cook Schedule &mdash; ' + _hp_store + ' / ' + _hp_dept + '</div>';
   h += '<div style="font-size:10px;color:#888;margin-bottom:12px">' + dateStr + ' &nbsp;|&nbsp; Boost: ' + boost + '% &nbsp;|&nbsp; Each cook takes 1.5 hours</div>';
