@@ -3048,27 +3048,30 @@ function hp_parseRows(rows){
 // ── Core calculation ──
 function hp_calcCooks(day, n){
   n = n || hp_cookCount || 3;
-  var times = (hp_cookTimes[day] || [6,9,12,14,16]).slice(0, n);
+  var times = (hp_cookTimes[day] || [6,10,14,null,null]).slice(0, n);
   var sales = hp_salesData[day] || {};
   var boost = (parseFloat((document.getElementById('hp-boost')||{}).value || 5)) / 100;
 
-  // Calculate finish times (each cook takes 1.5 hours)
-  var finishTimes = times.map(function(t){ return t !== null ? t + 1.5 : null; });
+  // Finish times: each cook takes 1.5 hours
+  var finishTimes = times.map(function(t){
+    return (t !== null && t !== '' && t !== undefined) ? parseFloat(t) + 1.5 : null;
+  });
 
   var result = [];
   for(var ci = 0; ci < n; ci++){
     var start = times[ci];
-    if(start === null || start === '') { result.push(null); continue; }
+    if(start === null || start === '' || start === undefined){ result.push(null); continue; }
     start = parseFloat(start);
     var finish = start + 1.5;
 
-    // Time window:
-    // Lower bound: finish of previous cook (or cook1 start for first cook)
-    // Upper bound: finish of this cook (no upper bound for last cook)
-    var lowerBound = ci === 0 ? start : finishTimes[ci-1];
-    var upperBound = ci < n-1 ? finishTimes[ci] : null;  // null = no upper limit
+    // Excel window logic:
+    // Cook 1: hour >= cook1_start  AND  hour < cook2_finish
+    // Cook N: hour >= cookN_finish  AND  hour < cookN+1_finish
+    // Last cook: hour >= lastCook_finish  (no upper bound)
+    var lowerBound = ci === 0 ? start : finishTimes[ci];
+    var upperBound = ci < n - 1 ? finishTimes[ci + 1] : null;
 
-    // Sum sales where hour >= lowerBound AND (hour < upperBound OR no upper bound)
+    // Sum absolute sales in window
     var totalSales = 0;
     Object.keys(sales).forEach(function(h){
       var hour = parseFloat(h);
@@ -3077,7 +3080,7 @@ function hp_calcCooks(day, n){
       }
     });
 
-    // Formula: ROUNDUP(totalSales, 0) / 4 * (1 + boost)
+    // ROUNDUP(totalSales, 0) / 4 * (1 + boost)  — matching Excel exactly
     var qty = Math.ceil(totalSales) / 4 * (1 + boost);
     result.push({start: start, finish: finish, qty: qty});
   }
@@ -3148,7 +3151,7 @@ function hp_render(){
 
   HP_DAYS.forEach(function(day, di){
     var cooks = hp_calcCooks(day, n);
-    var total = cooks.reduce(function(s,ck){ return s+(ck?ck.qty:0); },0);
+    var total = cooks.reduce(function(s,ck){ return s+(ck?Math.ceil(ck.qty):0); },0);
     var rowBg = di%2===0?'#fff':'#f8fafc';
     html += '<tr style="background:'+rowBg+'">';
     html += '<td style="padding:10px 12px;font-weight:700;font-size:13px;color:#1e293b;white-space:nowrap">'+day+'</td>';
@@ -3161,7 +3164,7 @@ function hp_render(){
         html += 'data-day="'+day+'" data-ci="'+ci+'" data-n="'+n+'" onchange="hp_updateCookTime(this)" oninput="hp_updateCookTime(this)">';
         html += '</td>';
         html += '<td style="padding:8px 4px;text-align:center;font-size:12px;color:#64748b">'+hp_fmtTime(cook.finish)+'</td>';
-        html += '<td style="padding:8px 12px;text-align:center;font-size:15px;font-weight:700;color:#1e293b">'+cook.qty.toFixed(1)+'</td>';
+        html += '<td style="padding:8px 12px;text-align:center;font-size:15px;font-weight:700;color:#1e293b">'+Math.ceil(cook.qty)+'</td>';
       } else {
         html += '<td style="'+bl+'padding:8px 4px;text-align:center">';
         html += '<input type="number" placeholder="—" min="0" max="23" step="0.5" style="width:58px;text-align:center;font-size:12px;border:1px solid #e2e8f0;border-radius:6px;padding:3px;color:#94a3b8" ';
@@ -3171,7 +3174,7 @@ function hp_render(){
         html += '<td style="padding:8px 12px;text-align:center;font-size:12px;color:#cbd5e1">—</td>';
       }
     }
-    html += '<td style="padding:8px 12px;text-align:center;font-size:16px;font-weight:700;color:#1e293b;border-left:1px solid #e2e8f0;background:#f0f9ff">'+total.toFixed(1)+'</td>';
+    html += '<td style="padding:8px 12px;text-align:center;font-size:16px;font-weight:700;color:#1e293b;border-left:1px solid #e2e8f0;background:#f0f9ff">'+total+'</td>';
     html += '</tr>';
   });
   html += '</tbody>';
