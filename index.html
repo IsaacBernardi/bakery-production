@@ -3078,7 +3078,7 @@ function hp_calcCooks(day, n){
     });
 
     // Formula: ROUNDUP(sum / 4 * (1 + boost), 0)
-    var qty = Math.ceil(totalSales / 4 * (1 + boost));
+    var qty = Math.round(totalSales / 4 * (1 + boost));
     result.push({start: start, finish: finish, qty: qty});
   }
   return result;
@@ -3130,7 +3130,6 @@ function hp_render(){
   }
   html += '<th style="padding:8px 12px;text-align:center;font-size:12px;font-weight:700;color:#64748b;border-bottom:2px solid #e2e8f0;border-left:1px solid #e2e8f0" rowspan="2">Total</th>';
   html += '</tr><tr style="background:#f1f5f9">';
-  html += '<th style="padding:4px 6px;font-size:10px;color:#94a3b8;border-bottom:1px solid #e2e8f0"></th>';
   for(var ci=1; ci<=n; ci++){
     html += '<th style="padding:4px 6px;font-size:10px;color:#94a3b8;border-bottom:1px solid #e2e8f0;border-left:2px solid #334155;text-align:center">Ready</th>';
     html += '<th style="padding:4px 6px;font-size:10px;color:#94a3b8;border-bottom:1px solid #e2e8f0;text-align:center">Qty</th>';
