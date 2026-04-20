@@ -1442,7 +1442,7 @@ function renderWeekView(){
 
   let dhtml='';
   groups.forEach(function(g){
-    const gi=items.map(function(it,ri){return{it,ri};}).filter(function(x){return x.it.group===g;});
+    const gi=items.map(function(it,ri){return{it,ri};}).filter(function(x){return x.it.group===g;}).sort(function(a,b){return a.it.desc.localeCompare(b.it.desc);});
     const totalCols=3+DAY_LABELS.length*3;
     if(g) dhtml+='<tr class="grp-row"><td colspan="'+totalCols+'">'+escHtml(g)+'</td></tr>';
     gi.forEach(function(obj){
@@ -1499,7 +1499,7 @@ function renderView(){
   }
   let dhtml='';
   groups.forEach(function(g){
-    const gi=items.map(function(it,ri){return{it,ri};}).filter(function(x){return x.it.group===g;});
+    const gi=items.map(function(it,ri){return{it,ri};}).filter(function(x){return x.it.group===g;}).sort(function(a,b){return a.it.desc.localeCompare(b.it.desc);});
     if(g)dhtml+='<tr class="grp-row"><td colspan="6">'+escHtml(g)+'</td></tr>';
     gi.forEach(function({it,ri}){
       const effOrder=hasSpecialGroup(it)?getEffectiveOrder(it,di):(it.orders[di]||0);
@@ -1527,7 +1527,7 @@ function renderView(){
   });
   let mhtml='';
   groups.forEach(function(g){
-    const gi=items.map(function(it,ri){return{it,ri};}).filter(function(x){return x.it.group===g;});
+    const gi=items.map(function(it,ri){return{it,ri};}).filter(function(x){return x.it.group===g;}).sort(function(a,b){return a.it.desc.localeCompare(b.it.desc);});
     if(g)mhtml+='<div class="mob-group">'+escHtml(g)+'</div>';
     gi.forEach(function({it,ri}){
       const order=hasSpecialGroup(it)?getEffectiveOrder(it,di):(it.orders[di]||0);
