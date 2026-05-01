@@ -3314,12 +3314,12 @@ function hp_printSchedule(){
   h += '<table><thead><tr><th class="left">Day</th>';
   if(showItemCol) h += '<th class="left">Item</th>';
   h += '<th>Boost%</th>';
-  for(var ci=1; ci<=n; ci++) h += '<th colspan="2" class="day-start">Cook '+ci+'</th>';
+  for(var ci=1; ci<=n; ci++) h += '<th colspan="3" class="day-start">Cook '+ci+'</th>';
   h += '<th>Total</th></tr>';
   h += '<tr><th></th>';
   if(showItemCol) h += '<th></th>';
   h += '<th></th>';
-  for(var ci=1; ci<=n; ci++) h += '<th class="day-start sub">Ready</th><th class="sub">Qty</th>';
+  for(var ci=1; ci<=n; ci++) h += '<th class="day-start sub">Start Cook</th><th class="sub">Ready</th><th class="sub">Qty</th>';
   h += '<th class="sub">Qty</th></tr></thead><tbody>';
 
   HP_DAYS.forEach(function(day, di){
@@ -3343,9 +3343,9 @@ function hp_printSchedule(){
       // Cook columns
       cooks.forEach(function(cook){
         if(cook){
-          h += '<td class="day-start">'+hp_fmtTime(cook.finish)+'</td><td class="qty">'+cook.qty+'</td>';
+          h += '<td class="day-start">'+hp_fmtTime(cook.start)+'</td><td>'+hp_fmtTime(cook.finish)+'</td><td class="qty">'+cook.qty+'</td>';
         } else {
-          h += '<td class="day-start grey">&mdash;</td><td class="grey">&mdash;</td>';
+          h += '<td class="day-start grey">&mdash;</td><td class="grey">&mdash;</td><td class="grey">&mdash;</td>';
         }
       });
       h += '<td class="total">'+total+'</td></tr>';
