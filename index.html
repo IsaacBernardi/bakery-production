@@ -726,7 +726,7 @@ tbody tr:hover{background:var(--s50)}
             <div class="tab po-buyer-only hidden" onclick="showTab('po-tp')">Product Master</div>
             <div class="tab" onclick="showTab('po-td')">Dispatch Sheet</div>
             <div class="tab" onclick="showTab('po-th')">&#x1F4C5; History</div>
-            <div class="tab po-buyer-only hidden" onclick="showTab('po-ts-summary')">&#x1F4CA; Order Summary</div>
+            <div class="tab po-buyer-only hidden" onclick="showTab('po-ts-summary')">&#x1F4CA; Weekly Export</div>
           </div>
         </div>
         <div id="po-ts" class="tab-content active card-body" style="padding-top:0">
@@ -2338,11 +2338,20 @@ function renderOrderSummary(){
           packQty: packQty,
           totalQty: 0,
           totalBaseQty: 0,
-          totalCost: 0
+          totalCost: 0,
+          forbesBaseQty: 0,
+          wwyalongBaseQty: 0,
+          blayneyBaseQty: 0
         };
       }
+      var fbs = parseFloat(sv.fbs)||0;
+      var bl  = parseFloat(sv.bl)||0;
+      var wyl = parseFloat(sv.wyl)||0;
       itemMap[barcode].totalQty += qty;
-      itemMap[barcode].totalBaseQty += qty * packQty;
+      itemMap[barcode].totalBaseQty    += qty * packQty;
+      itemMap[barcode].forbesBaseQty   += fbs * packQty;
+      itemMap[barcode].wwyalongBaseQty += wyl * packQty;
+      itemMap[barcode].blayneyBaseQty  += bl  * packQty;
       itemMap[barcode].totalCost += qty * ctn;
     });
   });
@@ -2357,7 +2366,7 @@ function renderOrderSummary(){
     html += '<option value="'+w+'"'+(w===selectedWeek?' selected':'')+'>'+weekLabel(w)+'</option>';
   });
   html += '</select>';
-  html += '<button class="btn btn-outline btn-sm" onclick="exportOrderSummary()">&#x1F4E5; Export to Excel</button>';
+  html += '<button class="btn btn-outline btn-sm" onclick="exportOrderSummary()">&#x1F4E5; Export Invoice</button>';
   html += '<button class="btn btn-outline btn-sm" onclick="exportTransferQty()">&#x1F4E6; Export Transfer Qty</button>';
   html += '</div>';
 
@@ -2369,7 +2378,7 @@ function renderOrderSummary(){
 
   html += '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">';
   html += '<thead><tr style="background:var(--s100)">';
-  ['Type','I No','Description','Location','Qty','UOM','Unit Cost','Avg Base Unit Cost'].forEach(function(h){
+  ['Type','I No','Description','Location','Forbes Qty','WW Qty','Blayney Qty','Total Qty','UOM','Unit Cost'].forEach(function(h){
     html += '<th style="padding:10px 10px;text-align:left;font-weight:700;border-bottom:2px solid var(--s200);white-space:nowrap">'+h+'</th>';
   });
   html += '</tr></thead><tbody>';
@@ -2382,9 +2391,11 @@ function renderOrderSummary(){
     html += '<td style="padding:8px 10px">'+esc(item.itemNo)+'</td>';
     html += '<td style="padding:8px 10px;font-weight:500">'+esc(item.desc)+'</td>';
     html += '<td style="padding:8px 10px">F WH</td>';
-    html += '<td style="padding:8px 10px;text-align:right;font-weight:600">'+item.totalBaseQty.toFixed(2)+'</td>';
+    html += '<td style="padding:8px 10px;text-align:right">'+item.forbesBaseQty.toFixed(2)+'</td>';
+    html += '<td style="padding:8px 10px;text-align:right">'+item.wwyalongBaseQty.toFixed(2)+'</td>';
+    html += '<td style="padding:8px 10px;text-align:right">'+item.blayneyBaseQty.toFixed(2)+'</td>';
+    html += '<td style="padding:8px 10px;text-align:right;font-weight:700">'+item.totalBaseQty.toFixed(2)+'</td>';
     html += '<td style="padding:8px 10px">PCS</td>';
-    html += '<td style="padding:8px 10px;text-align:right">$'+avgUnitCost.toFixed(4)+'</td>';
     html += '<td style="padding:8px 10px;text-align:right;font-weight:700;color:var(--s900)">$'+avgUnitCost.toFixed(4)+'</td>';
     html += '</tr>';
   });
