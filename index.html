@@ -760,7 +760,7 @@ tbody tr:hover{background:var(--s50)}
           </div>
           <div class="table-wrap">
             <table><thead><tr>
-              <th>Barcode</th><th>Product</th><th>Requests</th>
+              <th>Barcode</th><th>Product</th><th>Purch UOM</th><th>Requests</th>
               <th>FBS BOH</th><th>FBS Sent</th><th>BL BOH</th><th>BL Sent</th>
               <th>WYL BOH</th><th>WYL Sent</th>
               <th>CTN Cost</th><th>Unit Net</th><th>Sell</th><th>GP%</th>
@@ -2305,6 +2305,16 @@ function renderOrderSummary(){
   // Filter snaps for selected week
   var weekSnaps = allSnaps.filter(function(s){ return s._week === selectedWeek; });
 
+  // Build live lookup: barcode → itemNo from current Product Master
+  var liveItemNo = {};
+  if(po_data && po_data.categories){
+    po_data.categories.forEach(function(cat){
+      (cat.items||[]).forEach(function(item){
+        if(item.barcode) liveItemNo[item.barcode] = item.itemNo || '';
+      });
+    });
+  }
+
   // Build item map for selected week
   var itemMap = {};
   weekSnaps.forEach(function(snap){
@@ -2423,6 +2433,16 @@ function exportOrderSummary(){
     });
   });
 
+  // Build live lookup: barcode → itemNo from current Product Master
+  var liveItemNo = {};
+  if(po_data && po_data.categories){
+    po_data.categories.forEach(function(cat){
+      (cat.items||[]).forEach(function(item){
+        if(item.barcode) liveItemNo[item.barcode] = item.itemNo || '';
+      });
+    });
+  }
+
   // Build item map
   var itemMap = {};
   allSnaps.forEach(function(snap){
@@ -2439,7 +2459,7 @@ function exportOrderSummary(){
       var packQty = parseFloat((item.pack||'1').split(' ')[0]) || 1;
       var ctn = parseFloat(item.ctn) || 0;
       if(!itemMap[barcode]){
-        itemMap[barcode] = {itemNo:item.itemNo||'', barcode:barcode, desc:item.desc||barcode, packQty:packQty, totalBaseQty:0, totalCost:0};
+        itemMap[barcode] = {itemNo:item.itemNo || liveItemNo[barcode] || '', barcode:barcode, desc:item.desc||barcode, packQty:packQty, totalBaseQty:0, totalCost:0};
       }
       itemMap[barcode].totalBaseQty += qty * packQty;
       itemMap[barcode].totalCost += qty * ctn;
@@ -2802,6 +2822,7 @@ function renderBuyer(){
       const reqs=PO_STORES.map(s=>{const e=poOrder().storeEntries[s]?.[item.barcode]||{};return e.req?`${PO_STORE_SHORT[s]}:${e.req}`:null;}).filter(Boolean).join(' | ');
       html+=`<tr>
         <td class="text-slate">${esc(item.barcode)}</td><td style="font-weight:500">${esc(item.desc)}</td>
+        <td style="font-size:12px;color:var(--s600)">${esc(item.pack)}</td>
         <td style="font-size:11px;color:var(--s500);white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis" title="${esc(reqs)}">${esc(reqs)||'—'}</td>
         <td>${getBoh('Forbes',item.barcode)}</td>
         <td><input type="number" style="width:65px" value="${esc(poOrder().sentValues[item.barcode]?.fbs||'')}" onchange="updateSent('${esc(item.barcode)}','fbs',this.value)"></td>
