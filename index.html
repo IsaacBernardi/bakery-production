@@ -3028,6 +3028,20 @@ function printDispatch(store){
   var _g_printArea=document.getElementById('printArea');if(_g_printArea)_g_printArea.innerHTML=h;
   setTimeout(function(){
     window.print();
+    // Save to dispatch history before clearing
+    const snap = {
+      store: store,
+      savedAt: new Date().toISOString(),
+      label: store + ' — ' + new Date().toLocaleString('en-AU',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}),
+      dispatchStatus: 'printed',
+      storeEntries: JSON.parse(JSON.stringify(poOrder().storeEntries[store]||{})),
+      sentValues: {},
+      categories: JSON.parse(JSON.stringify(po_data.categories))
+    };
+    allActive().forEach(i=>{ if(getSent(i.barcode,key)>0) snap.sentValues[i.barcode]=JSON.parse(JSON.stringify(poOrder().sentValues[i.barcode]||{})); });
+    if(!poOrder().dispatchHistory) poOrder().dispatchHistory=[];
+    poOrder().dispatchHistory.unshift(snap);
+    if(poOrder().dispatchHistory.length>50) poOrder().dispatchHistory=poOrder().dispatchHistory.slice(0,50);
     // NOW clear sentValues for this store (archive after print)
     allActive().forEach(i=>{
       if(poOrder().sentValues[i.barcode]){
