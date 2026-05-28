@@ -764,7 +764,7 @@ tbody tr:hover{background:var(--s50)}
               <th>FBS BOH</th><th>FBS Sent</th><th>BL BOH</th><th>BL Sent</th>
               <th>WYL BOH</th><th>WYL Sent</th>
               <th>CTN Cost</th><th>Unit Net</th><th>Sell</th><th>GP%</th>
-              <th>New Cost</th><th>New Sell</th><th>New GP%</th>
+              <th>New Cost</th><th>New Sell</th><th>Sell UOM</th><th>New GP%</th>
             </tr></thead><tbody id="po-bTbody"></tbody></table>
           </div>
         </div>
@@ -852,14 +852,6 @@ tbody tr:hover{background:var(--s50)}
   </div>
 </div>
 </div>
-
-
-
-
-
-
-
-
 
 
 
@@ -2028,7 +2020,7 @@ function setPoOrder(n){
 }
 function renderOrderTabs(containerId){
   var html='<div class="po-order-tabs">';
-  [1,2,3].forEach(function(i){
+  [1].forEach(function(i){
     html+='<button id="po-ord-'+containerId+'-'+i+'" class="po-order-btn'+(i===po_activeOrder?' active':'')+'" onclick="setPoOrder('+i+')">Order '+i+'</button>';
   });
   html+='</div>';
@@ -2821,6 +2813,7 @@ function renderBuyer(){
         <td>$${item.sell.toFixed(2)}</td><td>${gp.toFixed(1)}%</td>
         <td><input type="number" style="width:75px" placeholder="${item.ctn.toFixed(2)}" value="${esc(nc)}" onchange="po_newCostVals['${esc(item.barcode)}']=this.value;renderBuyer()"></td>
         <td><input type="number" style="width:75px" placeholder="${item.sell.toFixed(2)}" value="${esc(ns)}" onchange="newSellVals['${esc(item.barcode)}']=this.value;renderBuyer()"></td>
+        <td>${esc(item.sellUOM||'')}</td>
         <td>${newGP.toFixed(1)}%</td>
       </tr>`;
     });
