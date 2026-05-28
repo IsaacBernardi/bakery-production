@@ -448,7 +448,14 @@ tbody tr:hover{background:var(--s50)}
   .po-mob-barcode{font-size:10px;color:var(--s400);margin-bottom:2px}
   .po-mob-desc{font-size:14px;font-weight:500;color:var(--s900);white-space:normal;word-break:break-word;line-height:1.3;margin-bottom:2px}
   .po-mob-pack{font-size:11px;color:var(--s500)}
-  .po-mob-inputs{display:flex;gap:8px;flex-shrink:0;padding-top:2px}
+  .po-order-tabs{display:flex;gap:6px;padding:8px 12px 0;border-bottom:1px solid var(--s200);margin-bottom:12px}
+.po-order-btn{padding:6px 16px;border:1px solid var(--s300);border-radius:8px 8px 0 0;background:var(--s50);color:var(--s500);font-size:13px;font-weight:600;cursor:pointer;border-bottom:none;margin-bottom:-1px}
+.po-order-btn.active{background:#fff;color:var(--s900);border-color:var(--s300);border-bottom-color:#fff}
+.po-order-tabs{display:flex;gap:0;border-bottom:2px solid var(--s200);margin-bottom:8px}
+.po-order-btn{padding:8px 18px;border:1px solid transparent;border-bottom:none;background:transparent;color:var(--s400);font-size:13px;font-weight:600;cursor:pointer;border-radius:8px 8px 0 0;margin-bottom:-2px}
+.po-order-btn.active{background:#fff;color:var(--s900);border-color:var(--s200);border-bottom-color:#fff}
+.po-order-btn:hover:not(.active){background:var(--s50)}
+.po-mob-inputs{display:flex;gap:8px;flex-shrink:0;padding-top:2px}
   .po-mob-field{display:flex;flex-direction:column;align-items:center;gap:3px}
   .po-mob-field label{font-size:9px;color:var(--s400);font-weight:700;text-transform:uppercase}
   .po-mob-field input[type=number]{width:64px;padding:5px 4px;font-size:14px;border:1.5px solid var(--s300);border-radius:8px;text-align:center;-webkit-appearance:none}
@@ -480,7 +487,11 @@ tbody tr:hover{background:var(--s50)}
 #panel-produce .tab-content{width:100%!important}
 #panel-produce .table-wrap{width:100%;overflow-x:auto}
 
-</style>
+
+.po-order-tabs{display:flex;gap:0;border-bottom:2px solid var(--s200);margin-bottom:8px}
+.po-order-btn{padding:8px 18px;border:1px solid transparent;border-bottom:none;background:transparent;color:var(--s400);font-size:13px;font-weight:600;cursor:pointer;border-radius:8px 8px 0 0;margin-bottom:-2px}
+.po-order-btn.active{background:#fff;color:var(--s900);border-color:var(--s200);border-bottom-color:#fff}
+.po-order-btn:hover:not(.active){background:var(--s50)}</style>
 </head>
 <body>
 <div class="screen active" id="s-choose">
@@ -717,12 +728,13 @@ tbody tr:hover{background:var(--s50)}
             <div class="tab" onclick="showTab('po-th')">&#x1F4C5; History</div>
           </div>
         </div>
-        <div id="po-ts" class="tab-content active card-body" style="padding-top:4px">
+        <div id="po-ts" class="tab-content active card-body" style="padding-top:0">
+          <div id="po-order-tabs-ts"></div>
           <div class="toolbar" id="po-storeBar"></div>
           <div id="po-roAlert" class="alert alert-amber mb12 hidden">Read-only after submit or lock.</div>
           <div id="po-seTable"></div>
         </div>
-        <div id="po-tb" class="tab-content card-body" style="padding-top:4px">
+        <div id="po-tb" class="tab-content card-body" style="padding-top:0"><div id="po-order-tabs-tb"></div>
           <div class="grid4 mb16">
             <div class="stat-box"><label>Product Total</label><div class="stat-value" id="po-sPT">$0.00</div></div>
             <div class="stat-box"><label>Market Cost ($)</label><input type="number" id="po-mktTotal" value="12" style="width:100%" oninput="recalcDashboard()"></div>
@@ -765,7 +777,7 @@ tbody tr:hover{background:var(--s50)}
           </div>
           <div id="po-pmContent"></div>
         </div>
-        <div id="po-td" class="tab-content card-body" style="padding-top:4px">
+        <div id="po-td" class="tab-content card-body" style="padding-top:0"><div id="po-order-tabs-td"></div><div style="padding-top:4px">
           <div id="po-dispContent"></div>
         </div>
         <div id="po-th" class="tab-content card-body" style="padding-top:4px">
@@ -777,6 +789,7 @@ tbody tr:hover{background:var(--s50)}
 </div>
 
 
+</div>
 <div class="u-panel" id="panel-hourly">
   <div id="hp-appContent" class="hp-hidden" style="min-height:calc(100vh - 52px);display:flex;flex-direction:column">
     <!-- Header -->
@@ -866,11 +879,11 @@ function checkPin() {
   var err = document.getElementById('pinErr');
   if (v === BUYER_PIN) {
     err.style.display = 'none';
-    document.getElementById('pinInput').value = '';
+    var _g_pinInput=document.getElementById('pinInput');if(_g_pinInput)_g_pinInput.value='';
     launchProduce('buyer','Forbes');
   } else {
     err.style.display = 'block';
-    document.getElementById('pinInput').value = '';
+    var _g_pinInput=document.getElementById('pinInput');if(_g_pinInput)_g_pinInput.value='';
   }
 }
 
@@ -891,7 +904,7 @@ async function loadSpecialGroupConfig(){
 }
 function launchBakery(store) {
   _selectedStore = store;
-  document.getElementById('dept-store-title').textContent = store + ' — Select Department';
+  var _el_dept_store_title=document.getElementById('dept-store-title');if(_el_dept_store_title)_el_dept_store_title.textContent=store + ' — Select Department';
   goTo('s-dept');
 }
 function launchBakeryDept(store, dept) {
@@ -899,7 +912,7 @@ function launchBakeryDept(store, dept) {
   var blobKey = store.toLowerCase() + '/' + dept.toLowerCase();
   localStorage.setItem('bps_store', store);
   localStorage.setItem('bps_dept', dept);
-  document.getElementById('userChip').textContent = 'Store: ' + store + ' — ' + dept;
+  var _el_userChip=document.getElementById('userChip');if(_el_userChip)_el_userChip.textContent='Store: ' + store + ' — ' + dept;
   document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
   document.getElementById('appShell').style.display = 'flex';
   showPanel('bakery');
@@ -908,7 +921,7 @@ function launchBakeryDept(store, dept) {
 }
 
 function launchProduce(role, store) {
-  document.getElementById('userChip').textContent = role === 'buyer' ? 'Buyer' : 'Store: ' + store;
+  var _el_userChip=document.getElementById('userChip');if(_el_userChip)_el_userChip.textContent=role === 'buyer' ? 'Buyer' : 'Store: ' + store;
   document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
   document.getElementById('appShell').style.display = 'flex';
   showPanel('produce');
@@ -972,8 +985,8 @@ function defaultSaveLabel(storeCode){
   const d=new Date().toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
   return (storeCode||'Store')+' — '+d;
 }
-function showError(msg){const el=document.getElementById('errorMsg');el.textContent=msg;el.style.display=msg?'block':'none';}
-function showToast(msg,dur){const t=document.getElementById('sharedToast')||document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},dur||3000);}
+function showError(msg){const el=document.getElementById('errorMsg');if(!el)return;el.textContent=msg;el.style.display=msg?'block':'none';}
+function showToast(msg,dur){const t=document.getElementById('sharedToast')||document.getElementById('toast');if(!t)return;t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},dur||3000);}
 function getBoosts(){return DAY_LABELS.map(function(_,i){return (parseFloat(document.getElementById('b'+i)?.value)||0)/100;});}
 function calcBake(order,sohVal,boost){return Math.round(order*(1+boost)-(sohVal!==null?sohVal:0));}
 
@@ -1056,9 +1069,9 @@ function switchStore(){
   document.getElementById('appContent').style.display='none';
   document.getElementById('mainContent').style.display='none';
   document.getElementById('dropZone').style.display='block';
-  document.getElementById('dayBar').innerHTML='';
-  document.getElementById('tbody').innerHTML='';
-  document.getElementById('mobileList').innerHTML='';
+  var _g_dayBar=document.getElementById('dayBar');if(_g_dayBar)_g_dayBar.innerHTML='';
+  var _g_tbody=document.getElementById('tbody');if(_g_tbody)_g_tbody.innerHTML='';
+  var _g_mobileList=document.getElementById('mobileList');if(_g_mobileList)_g_mobileList.innerHTML='';
   const lbl=document.getElementById('orderLabel');if(lbl)lbl.value='';
   const sel=document.getElementById('storeSelect');if(sel)sel.value='';
   /* [handled by shell] */
@@ -1179,7 +1192,7 @@ function parseRows(rows){
   // Pre-fill save label with today's date
   const today=new Date();
   const d=today.toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
-  document.getElementById('orderLabel').value=(storeName?storeName+' — ':'')+d;
+  var _g_orderLabel=document.getElementById('orderLabel');if(_g_orderLabel)_g_orderLabel.value=(storeName?storeName+' — ':'')+d;
   renderTable();
 }
 
@@ -1340,7 +1353,7 @@ function renderSpecialGroupsModal(showAll){
     });
     html+='</tbody></table>';
   }
-  document.getElementById('sgBody').innerHTML=html;
+  var _g_sgBody=document.getElementById('sgBody');if(_g_sgBody)_g_sgBody.innerHTML=html;
 }
 function buildRuleRow(g, rule){
   var rid='sgr'+(window._sg_rowId=(window._sg_rowId||0)+1);
@@ -1630,9 +1643,9 @@ function doNewImport(){
   showError('');
   document.getElementById('dropZone').style.display='block';
   document.getElementById('mainContent').style.display='none';
-  document.getElementById('dayBar').innerHTML='';
-  document.getElementById('tbody').innerHTML='';
-  document.getElementById('mobileList').innerHTML='';
+  var _g_dayBar=document.getElementById('dayBar');if(_g_dayBar)_g_dayBar.innerHTML='';
+  var _g_tbody=document.getElementById('tbody');if(_g_tbody)_g_tbody.innerHTML='';
+  var _g_mobileList=document.getElementById('mobileList');if(_g_mobileList)_g_mobileList.innerHTML='';
   // Reset save label to store + date
   const lbl=document.getElementById('orderLabel');
   if(lbl)lbl.value=defaultSaveLabel(currentStoreCode);
@@ -1804,7 +1817,7 @@ function restoreSnapshot(snap){
   if(snap.boosts){snap.boosts.forEach(function(b,i){const el=document.getElementById('b'+i);if(el)el.value=Math.round(b*100);});}
   document.getElementById('dropZone').style.display='none';
   document.getElementById('mainContent').style.display='block';
-  if(document.getElementById('orderLabel'))document.getElementById('orderLabel').value=snap.label||'';
+  if(document.getElementById('orderLabel'))var _g_orderLabel=document.getElementById('orderLabel');if(_g_orderLabel)_g_orderLabel.value=snap.label||'';
   buildDayBar();syncBoostDisplay();renderView();
 }
 
@@ -1812,7 +1825,7 @@ window.addEventListener('resize',function(){if(items.length)renderView();});
 
 // ══ HISTORY ══════════════════════════════════════════
 async function openHistory(){
-  document.getElementById('historyStoreLabel').textContent=currentStoreCode;
+  var _el_historyStoreLabel=document.getElementById('historyStoreLabel');if(_el_historyStoreLabel)_el_historyStoreLabel.textContent=currentStoreCode;
   document.getElementById('historyModal').classList.add('open');
   const body=document.getElementById('historyBody');
   body.innerHTML='<div class="history-loading">Loading history...</div>';
@@ -1922,7 +1935,7 @@ function printHistoryOrder(idx){
     });
     h+='</tbody></table>';
   });
-  document.getElementById('printArea').innerHTML=h;
+  var _g_printArea=document.getElementById('printArea');if(_g_printArea)_g_printArea.innerHTML=h;
   setTimeout(function(){window.print();},80);
 }
 
@@ -1987,6 +2000,35 @@ const PO_CURRENT_BLOB = 'current.json';
 const PO_STORES = ['Forbes','Blayney','West Wyalong'];
 const PO_STORE_KEYS = {Forbes:'fbs',Blayney:'bl','West Wyalong':'wyl'};
 const PO_STORE_SHORT = {Forbes:'FBS',Blayney:'BL','West Wyalong':'WYL'};
+const PO_ORDERS = [1,2,3];
+let po_activeOrder = 1;
+function poOrder(){
+  if(!po_data) return null;
+  if(!po_data.orders){
+    // Auto-migrate on the fly
+    var emptyOrd=function(){return {storeEntries:{},sentValues:{},storeStatuses:{Forbes:'draft',Blayney:'draft','West Wyalong':'draft'},dispatchStatuses:{Forbes:'draft',Blayney:'draft','West Wyalong':'draft'},dispatchMeta:{Forbes:{printed:false},Blayney:{printed:false},'West Wyalong':{printed:false}},dispatchHistory:[]};};
+    po_data.orders={1:{storeEntries:po_data.storeEntries||{},sentValues:po_data.sentValues||{},storeStatuses:po_data.storeStatuses||{Forbes:'draft',Blayney:'draft','West Wyalong':'draft'},dispatchStatuses:po_data.dispatchStatuses||{Forbes:'draft',Blayney:'draft','West Wyalong':'draft'},dispatchMeta:po_data.dispatchMeta||{},dispatchHistory:po_data.dispatchHistory||[]},2:emptyOrd(),3:emptyOrd()};
+  }
+  return po_data.orders[po_activeOrder] || po_data.orders[1] || {};
+}
+function setPoOrder(n){
+  po_activeOrder = n;
+  [1,2,3].forEach(function(i){
+    ['po-order-tabs-ts','po-order-tabs-tb','po-order-tabs-td'].forEach(function(tabId){
+      var btn=document.getElementById('po-ord-'+tabId+'-'+i);
+      if(btn) btn.className='po-order-btn'+(i===n?' active':'');
+    });
+  });
+  renderStoreEntry(); if(po_appRole==='buyer'){ renderBuyer(); renderDispatch(); }
+}
+function renderOrderTabs(containerId){
+  var html='<div class="po-order-tabs">';
+  [1,2,3].forEach(function(i){
+    html+='<button id="po-ord-'+containerId+'-'+i+'" class="po-order-btn'+(i===po_activeOrder?' active':'')+'" onclick="setPoOrder('+i+')">Order '+i+'</button>';
+  });
+  html+='</div>';
+  return html;
+}
 
 let po_appRole = 'store'; // 'store' or 'buyer'
 let po_appStore = 'Forbes'; // current store context
@@ -2000,24 +2042,29 @@ let po_data = null;
 // ═══════════════════════════════════════════
 function buildDefaultData() {
   const cats = buildCats();
-  const storeEntries = {}, sentValues = {};
-  const defs = {
-    Forbes:{'4071':{boh:'6',req:''},'4031':{boh:'8',req:''},'5091':{boh:'1',req:''},'5105':{boh:'8',req:''},'42021':{boh:'0',req:''}},
-    Blayney:{'4071':{boh:'5',req:''},'4031':{boh:'7',req:''},'5091':{boh:'0',req:'1'},'5105':{boh:'6',req:''},'42021':{boh:'2',req:''}},
-    'West Wyalong':{'4071':{boh:'4',req:''},'4031':{boh:'3',req:''},'5091':{boh:'2',req:''},'5105':{boh:'10',req:''},'42021':{boh:'1',req:''}},
-  };
-  PO_STORES.forEach(s => {
-    storeEntries[s] = {};
-    cats.forEach(c => c.items.forEach(i => { storeEntries[s][i.barcode] = defs[s]?.[i.barcode]??{boh:'',req:''}; }));
-  });
-  cats.forEach(c => c.items.forEach(i => { sentValues[i.barcode] = {fbs:'',bl:'',wyl:''}; }));
+  function makeOrderData(){
+    const storeEntries = {}, sentValues = {};
+    const defs = {
+      Forbes:{'4071':{boh:'6',req:''},'4031':{boh:'8',req:''},'5091':{boh:'1',req:''},'5105':{boh:'8',req:''},'42021':{boh:'0',req:''}},
+      Blayney:{'4071':{boh:'5',req:''},'4031':{boh:'7',req:''},'5091':{boh:'0',req:'1'},'5105':{boh:'6',req:''},'42021':{boh:'2',req:''}},
+      'West Wyalong':{'4071':{boh:'4',req:''},'4031':{boh:'3',req:''},'5091':{boh:'2',req:''},'5105':{boh:'10',req:''},'42021':{boh:'1',req:''}},
+    };
+    PO_STORES.forEach(s => {
+      storeEntries[s] = {};
+      cats.forEach(c => c.items.forEach(i => { storeEntries[s][i.barcode] = defs[s]?.[i.barcode]??{boh:'',req:''}; }));
+    });
+    cats.forEach(c => c.items.forEach(i => { sentValues[i.barcode] = {fbs:'',bl:'',wyl:''}; }));
+    return {
+      storeEntries, sentValues,
+      storeStatuses: {Forbes:'draft',Blayney:'draft','West Wyalong':'draft'},
+      dispatchStatuses: {Forbes:'draft',Blayney:'draft','West Wyalong':'draft'},
+      dispatchMeta: {Forbes:{printed:false,emailed:false},Blayney:{printed:false,emailed:false},'West Wyalong':{printed:false,emailed:false}},
+      dispatchHistory: [],
+    };
+  }
   return {
     categories: cats,
-    storeEntries,
-    sentValues,
-    storeStatuses: {Forbes:'draft',Blayney:'draft','West Wyalong':'draft'},
-    dispatchStatuses: {Forbes:'draft',Blayney:'draft','West Wyalong':'draft'},
-    dispatchMeta: {Forbes:{printed:false,emailed:false},Blayney:{printed:false,emailed:false},'West Wyalong':{printed:false,emailed:false}},
+    orders: {1:makeOrderData(), 2:makeOrderData(), 3:makeOrderData()},
     marketTotal: 12,
     transportTotal: 8,
     lastReset: 'Not yet run',
@@ -2045,8 +2092,8 @@ function buildCats() {
 function setCloud(state, msg) {
   const dot = document.getElementById('po-dot');
   const lbl = document.getElementById('po-cloudlbl');
-  dot.className = 'cloud-dot ' + state;
-  lbl.textContent = msg;
+  if(dot) dot.className = 'cloud-dot ' + state;
+  if(lbl) lbl.textContent = msg;
 }
 async function loadFromCloud() {
   setCloud('busy','Loading...');
@@ -2055,8 +2102,27 @@ async function loadFromCloud() {
     if (res.status === 404) { po_data = buildDefaultData(); setCloud('ok','No po_data yet — using defaults'); return; }
     if (!res.ok) throw new Error('HTTP '+res.status);
     po_data = await res.json();
+    // Migrate old format (pre-orders) to per-order structure
+    if(!po_data.orders){
+      const emptyOrd=()=>({storeEntries:{},sentValues:{},storeStatuses:{Forbes:'draft',Blayney:'draft','West Wyalong':'draft'},dispatchStatuses:{Forbes:'draft',Blayney:'draft','West Wyalong':'draft'},dispatchMeta:{Forbes:{printed:false},Blayney:{printed:false},'West Wyalong':{printed:false}},dispatchHistory:[]});
+      po_data.orders={
+        1:{storeEntries:po_data.storeEntries||{},sentValues:po_data.sentValues||{},storeStatuses:po_data.storeStatuses||{Forbes:'draft',Blayney:'draft','West Wyalong':'draft'},dispatchStatuses:po_data.dispatchStatuses||{Forbes:'draft',Blayney:'draft','West Wyalong':'draft'},dispatchMeta:po_data.dispatchMeta||{},dispatchHistory:po_data.dispatchHistory||[]},
+        2:emptyOrd(), 3:emptyOrd()
+      };
+      delete po_data.storeEntries; delete po_data.sentValues;
+      delete po_data.storeStatuses; delete po_data.dispatchStatuses;
+      delete po_data.dispatchMeta; delete po_data.dispatchHistory;
+    }
+    // Ensure all orders exist
+    [1,2,3].forEach(function(i){ if(!po_data.orders[i]){ po_data.orders[i]={storeEntries:{},sentValues:{},storeStatuses:{Forbes:'draft',Blayney:'draft','West Wyalong':'draft'},dispatchStatuses:{Forbes:'draft',Blayney:'draft','West Wyalong':'draft'},dispatchMeta:{},dispatchHistory:[]}; } });
     // ensure new stores/fields exist
-    PO_STORES.forEach(s => { if (!po_data.storeEntries[s]) po_data.storeEntries[s]={}; if (!po_data.dispatchMeta[s]) po_data.dispatchMeta[s]={printed:false}; }); if(!po_data.dispatchHistory) po_data.dispatchHistory=[];
+    PO_STORES.forEach(s => { if (!poOrder().storeEntries[s]) poOrder().storeEntries[s]={}; if (!poOrder().dispatchMeta[s]) poOrder().dispatchMeta[s]={printed:false}; }); if(!poOrder().dispatchHistory) poOrder().dispatchHistory=[];
+    console.log('loadFromCloud: orders exist:', !!po_data.orders);
+    if(po_data.orders && po_data.orders[1]){
+      const o1 = po_data.orders[1];
+      console.log('Order 1 storeStatuses:', JSON.stringify(o1.storeStatuses));
+      console.log('Order 1 Forbes entries sample:', JSON.stringify(o1.storeEntries['Forbes'] ? Object.entries(o1.storeEntries['Forbes']).slice(0,3) : 'none'));
+    }
     setCloud('ok','Loaded from cloud');
     showToast('Data loaded ✓');
   } catch(e) {
@@ -2067,7 +2133,7 @@ async function loadFromCloud() {
 }
 async function printSnapDispatch(snapIdx){
   if(!po_data) return;
-  const snap=po_data.dispatchHistory[snapIdx];
+  const snap=poOrder().dispatchHistory[snapIdx];
   if(!snap) return;
   const key=PO_STORE_KEYS[snap.store];
   const dateStr=new Date(snap.savedAt).toLocaleString('en-AU');
@@ -2092,27 +2158,27 @@ async function printSnapDispatch(snapIdx){
     });
   });
   h+=`</tbody></table>`;
-  document.getElementById('printArea').innerHTML=h;
+  var _g_printArea=document.getElementById('printArea');if(_g_printArea)_g_printArea.innerHTML=h;
   setTimeout(function(){ window.print(); },80);
 }
 
 function reloadSnap(snapIdx){
   if(!po_data) return;
-  const snap=po_data.dispatchHistory[snapIdx];
+  const snap=poOrder().dispatchHistory[snapIdx];
   if(!snap) return;
   if(!confirm('Reload this dispatch snapshot? This will overwrite current '+snap.store+' store entry and sent values.')) return;
   const key=PO_STORE_KEYS[snap.store];
   // Restore store entries
-  po_data.storeEntries[snap.store]=JSON.parse(JSON.stringify(snap.storeEntries||{}));
+  poOrder().storeEntries[snap.store]=JSON.parse(JSON.stringify(snap.storeEntries||{}));
   // Restore sent values
   Object.keys(snap.sentValues||{}).forEach(bc=>{
-    if(!po_data.sentValues[bc]) po_data.sentValues[bc]={fbs:'',bl:'',wyl:''};
+    if(!poOrder().sentValues[bc]) poOrder().sentValues[bc]={fbs:'',bl:'',wyl:''};
     const sv=snap.sentValues[bc];
-    if(key==='fbs') po_data.sentValues[bc].fbs=sv.fbs||'';
-    else if(key==='bl') po_data.sentValues[bc].bl=sv.bl||'';
-    else if(key==='wyl') po_data.sentValues[bc].wyl=sv.wyl||'';
+    if(key==='fbs') poOrder().sentValues[bc].fbs=sv.fbs||'';
+    else if(key==='bl') poOrder().sentValues[bc].bl=sv.bl||'';
+    else if(key==='wyl') poOrder().sentValues[bc].wyl=sv.wyl||'';
   });
-  po_data.dispatchStatuses[snap.store]='finalised';
+  poOrder().dispatchStatuses[snap.store]='finalised';
   saveToCloud();
   renderStoreEntry();
   renderDispatch();
@@ -2126,7 +2192,7 @@ function toggleHDetail(id){
 
 function renderDispatchHistory(){
   if(!po_data) return;
-  const history = (po_data.dispatchHistory||[]).filter(snap=>{
+  const history = (poOrder().dispatchHistory||[]).filter(snap=>{
     // Store users only see their own store history
     return po_appRole==='buyer' || snap.store===po_appStore;
   });
@@ -2232,8 +2298,8 @@ async function startApp() {
   document.querySelectorAll('.buyer-only').forEach(el => el.classList.toggle('hidden', po_appRole!=='buyer'));
   await loadFromCloud();
   // sync market/transport to UI
-  if (document.getElementById('marketTotal')) document.getElementById('marketTotal').value = po_data.marketTotal||12;
-  if (document.getElementById('transportTotal')) document.getElementById('transportTotal').value = po_data.transportTotal||8;
+  if (document.getElementById('marketTotal')) var _g_marketTotal=document.getElementById('marketTotal');if(_g_marketTotal)_g_marketTotal.value=po_data.marketTotal||12;
+  if (document.getElementById('transportTotal')) var _g_transportTotal=document.getElementById('transportTotal');if(_g_transportTotal)_g_transportTotal.value=po_data.transportTotal||8;
   showTab('tab-store');
   renderStoreEntry();
 }
@@ -2252,8 +2318,8 @@ function oncostFrac() {
 function unitNet(ctn,pack){ return ctn*(1+oncostFrac())/packSize(pack); }
 function calcGP(sell,ctn,pack){ const l=unitNet(ctn,pack); if(!sell)return 0; return((sell-l)/sell)*100; }
 function allActive(){ return po_data.categories.flatMap(c=>c.items.filter(i=>i.active).map(i=>({...i,category:c.name}))); }
-function getSent(b,k){ return parseFloat(po_data.sentValues[b]?.[k]||0)||0; }
-function getBoh(store,b){ return parseFloat(po_data.storeEntries[store]?.[b]?.boh||0)||0; }
+function getSent(b,k){ return parseFloat(poOrder().sentValues[b]?.[k]||0)||0; }
+function getBoh(store,b){ return parseFloat(poOrder().storeEntries[store]?.[b]?.boh||0)||0; }
 function statusTone(s){ return s==='submitted'?'blue':s==='locked'?'rose':'slate'; }
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 // [showToast handled by unified shell]
@@ -2284,8 +2350,13 @@ function showTab(id) {
 // ═══════════════════════════════════════════
 function renderStoreEntry() {
   if (!po_data) return;
+  // Inject order tabs into store entry and buyer dashboard
+  ['po-order-tabs-ts','po-order-tabs-tb'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el) el.innerHTML=renderOrderTabs(id);
+  });
   const store = effectiveStore();
-  const status = po_data.storeStatuses[store];
+  const status = poOrder().storeStatuses[store];
   const ro = po_appRole==='store' && status!=='draft';
 
   // Toolbar
@@ -2305,8 +2376,8 @@ function renderStoreEntry() {
     toolbar += `<button class="btn btn-rose btn-sm" onclick="lockStore()">Lock Store</button>`;
   }
   toolbar += `<span class="text-xs text-slate">Last reset: ${esc(po_data.lastReset)}</span>`;
-  document.getElementById('po-storeBar').innerHTML = toolbar;
-  document.getElementById('po-roAlert').className = 'alert alert-amber mb12'+(ro?'':' hidden');
+  var _sb=document.getElementById('po-storeBar');if(_sb)_sb.innerHTML=toolbar;
+  var _ra=document.getElementById('po-roAlert');if(_ra)_ra.className='alert alert-amber mb12'+(ro?'':' hidden');
 
   // Desktop table
   let html = '<div class="po-desktop-table table-wrap"><table><thead><tr><th>Barcode</th><th>Product</th><th>Pack</th><th>BOH (ctns)</th><th>Customer Request</th></tr></thead><tbody>';
@@ -2323,12 +2394,12 @@ function renderStoreEntry() {
     mob += `<div class="po-mob-group" onclick="toggleSE('${esc(cat.name)}')">${col?'▶':'▼'} ${esc(cat.name)}</div>`;
 
     if (!col) actives.forEach(item => {
-      const e = po_data.storeEntries[store]?.[item.barcode]||{boh:'',req:''};
+      const e = poOrder().storeEntries[store]?.[item.barcode]||{boh:'',req:''};
       const dis = ro?'disabled':'';
       // Desktop row
       html += `<tr><td class="text-slate">${esc(item.barcode)}</td><td style="font-weight:500">${esc(item.desc)}</td><td>${esc(item.pack)}</td>
-        <td><input type="number" style="width:75px" value="${esc(e.boh)}" ${dis} onchange="updateEntry('${esc(store)}','${esc(item.barcode)}','boh',this.value)"></td>
-        <td><input type="text" style="width:130px" value="${esc(e.req)}" ${dis} onchange="updateEntry('${esc(store)}','${esc(item.barcode)}','req',this.value)"></td></tr>`;
+        <td><input type="number" style="width:75px" value="${esc(e.boh)}" ${dis} oninput="updateEntry('${esc(store)}','${esc(item.barcode)}','boh',this.value)"></td>
+        <td><input type="text" style="width:130px" value="${esc(e.req)}" ${dis} oninput="updateEntry('${esc(store)}','${esc(item.barcode)}','req',this.value)"></td></tr>`;
       // Mobile card
       mob += `<div class="po-mob-row">
         <div class="po-mob-info">
@@ -2339,11 +2410,11 @@ function renderStoreEntry() {
         <div class="po-mob-inputs">
           <div class="po-mob-field">
             <label>BOH</label>
-            <input type="number" value="${esc(e.boh)}" ${dis} onchange="updateEntry('${esc(store)}','${esc(item.barcode)}','boh',this.value)">
+            <input type="number" value="${esc(e.boh)}" ${dis} oninput="updateEntry('${esc(store)}','${esc(item.barcode)}','boh',this.value)">
           </div>
           <div class="po-mob-field">
             <label>Request</label>
-            <input type="text" value="${esc(e.req)}" ${dis} placeholder="—" onchange="updateEntry('${esc(store)}','${esc(item.barcode)}','req',this.value)">
+            <input type="text" value="${esc(e.req)}" ${dis} placeholder="—" oninput="updateEntry('${esc(store)}','${esc(item.barcode)}','req',this.value)">
           </div>
         </div>
       </div>`;
@@ -2352,27 +2423,27 @@ function renderStoreEntry() {
 
   html += '</tbody></table></div>';
   mob += '</div>';
-  document.getElementById('po-seTable').innerHTML = html + mob;
+  var _st=document.getElementById('po-seTable');if(_st)_st.innerHTML=html+mob;
 }
 function toggleSE(name){ po_collapsedSE[name]=!po_collapsedSE[name]; renderStoreEntry(); }
 function setActiveStore(store){ po_appStore=store; renderStoreEntry(); }
 function updateEntry(store,barcode,field,value){
-  if(!po_data.storeEntries[store]) po_data.storeEntries[store]={};
-  if(!po_data.storeEntries[store][barcode]) po_data.storeEntries[store][barcode]={boh:'',req:''};
-  po_data.storeEntries[store][barcode][field]=value;
+  if(!poOrder().storeEntries[store]) poOrder().storeEntries[store]={};
+  if(!poOrder().storeEntries[store][barcode]) poOrder().storeEntries[store][barcode]={boh:'',req:''};
+  poOrder().storeEntries[store][barcode][field]=value;
 }
 function resetStoreCounts(){
   PO_STORES.forEach(s=>{
-    Object.keys(po_data.storeEntries[s]||{}).forEach(b=>{ po_data.storeEntries[s][b]={boh:'',req:''}; });
-    po_data.storeStatuses[s]='draft';
+    Object.keys(poOrder().storeEntries[s]||{}).forEach(b=>{ poOrder().storeEntries[s][b]={boh:'',req:''}; });
+    poOrder().storeStatuses[s]='draft';
   });
   po_data.lastReset=new Date().toLocaleString('en-AU');
   renderStoreEntry();
   showToast('Morning reset complete — all BOH cleared');
 }
-function submitStore(){ const s=effectiveStore(); po_data.storeStatuses[s]='submitted'; renderStoreEntry(); showToast(`${s} order submitted`); }
-function reopenStore(){ const s=effectiveStore(); po_data.storeStatuses[s]='draft'; renderStoreEntry(); showToast(`${s} order reopened`); }
-function lockStore(){ const s=effectiveStore(); po_data.storeStatuses[s]='locked'; renderStoreEntry(); showToast(`${s} order locked`); }
+async function submitStore(){ const s=effectiveStore(); const ord=poOrder(); if(!ord) return; ord.storeStatuses[s]='submitted'; await saveToCloud(); renderStoreEntry(); showToast(s+' order submitted'); }
+function reopenStore(){ const s=effectiveStore(); poOrder().storeStatuses[s]='draft'; renderStoreEntry(); showToast(`${s} order reopened`); }
+function lockStore(){ const s=effectiveStore(); poOrder().storeStatuses[s]='locked'; renderStoreEntry(); showToast(`${s} order locked`); }
 
 // ═══════════════════════════════════════════
 // BUYER DASHBOARD
@@ -2381,17 +2452,17 @@ function recalc(){
   if(!po_data)return;
   const items=allActive();
   const total=items.reduce((s,i)=>s+i.ctn,0);
-  document.getElementById('po-sPT').textContent='$'+total.toFixed(2);
+  var _sPT=document.getElementById('po-sPT');if(_sPT)_sPT.textContent='$'+total.toFixed(2);
   const onc=oncostFrac();
-  document.getElementById('po-sOnc').textContent=(onc*100).toFixed(2)+'%';
+  var _sOnc=document.getElementById('po-sOnc');if(_sOnc)_sOnc.textContent=(onc*100).toFixed(2)+'%';
   let retail=0,netCost=0,gpSum=0;
   items.forEach(i=>{
     const ts=getSent(i.barcode,'fbs')+getSent(i.barcode,'bl')+getSent(i.barcode,'wyl');
     retail+=i.sell*ts; netCost+=i.ctn*(1+onc)*ts; gpSum+=calcGP(i.sell,i.ctn,i.pack);
   });
-  document.getElementById('po-sRet').textContent='$'+retail.toFixed(2);
-  document.getElementById('po-sNet').textContent='$'+netCost.toFixed(2);
-  document.getElementById('po-sGP').textContent=(items.length?(gpSum/items.length).toFixed(1):'0.0')+'%';
+  var _sRet=document.getElementById('po-sRet');if(_sRet)_sRet.textContent='$'+retail.toFixed(2);
+  var _sNet=document.getElementById('po-sNet');if(_sNet)_sNet.textContent='$'+netCost.toFixed(2);
+  var _sGP=document.getElementById('po-sGP');if(_sGP)_sGP.textContent=(items.length?(gpSum/items.length).toFixed(1):'0.0')+'%';
 }
 function setFilter(f){
   po_activeFilter=f;
@@ -2413,6 +2484,7 @@ function matchFilter(item){
   }
 }
 function renderBuyer(){
+  if(!po_data || !poOrder()) return;
   recalc();
   let html='';
   sortedCats().forEach(cat=>{
@@ -2428,16 +2500,16 @@ function renderBuyer(){
       const ncCtn=nc!==''?parseFloat(nc):item.ctn;
       const newGP=ns!==''||nc!==''?calcGP(nsSell,ncCtn,item.pack):gp;
       // Collect store requests compactly
-      const reqs=PO_STORES.map(s=>{const e=po_data.storeEntries[s]?.[item.barcode]||{};return e.req?`${PO_STORE_SHORT[s]}:${e.req}`:null;}).filter(Boolean).join(' | ');
+      const reqs=PO_STORES.map(s=>{const e=poOrder().storeEntries[s]?.[item.barcode]||{};return e.req?`${PO_STORE_SHORT[s]}:${e.req}`:null;}).filter(Boolean).join(' | ');
       html+=`<tr>
         <td class="text-slate">${esc(item.barcode)}</td><td style="font-weight:500">${esc(item.desc)}</td>
         <td style="font-size:11px;color:var(--s500);white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis" title="${esc(reqs)}">${esc(reqs)||'—'}</td>
         <td>${getBoh('Forbes',item.barcode)}</td>
-        <td><input type="number" style="width:65px" value="${esc(po_data.sentValues[item.barcode]?.fbs||'')}" onchange="updateSent('${esc(item.barcode)}','fbs',this.value)"></td>
+        <td><input type="number" style="width:65px" value="${esc(poOrder().sentValues[item.barcode]?.fbs||'')}" onchange="updateSent('${esc(item.barcode)}','fbs',this.value)"></td>
         <td>${getBoh('Blayney',item.barcode)}</td>
-        <td><input type="number" style="width:65px" value="${esc(po_data.sentValues[item.barcode]?.bl||'')}" onchange="updateSent('${esc(item.barcode)}','bl',this.value)"></td>
+        <td><input type="number" style="width:65px" value="${esc(poOrder().sentValues[item.barcode]?.bl||'')}" onchange="updateSent('${esc(item.barcode)}','bl',this.value)"></td>
         <td>${getBoh('West Wyalong',item.barcode)}</td>
-        <td><input type="number" style="width:65px" value="${esc(po_data.sentValues[item.barcode]?.wyl||'')}" onchange="updateSent('${esc(item.barcode)}','wyl',this.value)"></td>
+        <td><input type="number" style="width:65px" value="${esc(poOrder().sentValues[item.barcode]?.wyl||'')}" onchange="updateSent('${esc(item.barcode)}','wyl',this.value)"></td>
         <td>$${item.ctn.toFixed(2)}</td><td>$${un.toFixed(2)}</td>
         <td>$${item.sell.toFixed(2)}</td><td>${gp.toFixed(1)}%</td>
         <td><input type="number" style="width:75px" placeholder="${item.ctn.toFixed(2)}" value="${esc(nc)}" onchange="po_newCostVals['${esc(item.barcode)}']=this.value;renderBuyer()"></td>
@@ -2446,16 +2518,16 @@ function renderBuyer(){
       </tr>`;
     });
   });
-  document.getElementById('po-bTbody').innerHTML=html;
+  var _bt=document.getElementById('po-bTbody');if(_bt)_bt.innerHTML=html;
 }
 function toggleBuyer(name){ collapsedBuyer[name]=!collapsedBuyer[name]; renderBuyer(); }
 function updateSent(b,k,v){
-  if(!po_data.sentValues[b]) po_data.sentValues[b]={fbs:'',bl:'',wyl:''};
-  po_data.sentValues[b][k]=v;
+  if(!poOrder().sentValues[b]) poOrder().sentValues[b]={fbs:'',bl:'',wyl:''};
+  poOrder().sentValues[b][k]=v;
   // If buyer enters a new sent value, reset dispatch status so card can appear
   const storeForKey = k==='fbs'?'Forbes':k==='bl'?'Blayney':'West Wyalong';
-  if(v && v!=='' && po_data.dispatchStatuses[storeForKey]==='finalised'){
-    po_data.dispatchStatuses[storeForKey]='draft';
+  if(v && v!=='' && poOrder().dispatchStatuses[storeForKey]==='finalised'){
+    poOrder().dispatchStatuses[storeForKey]='draft';
   }
   recalc();
   // Refresh dispatch tab if it's currently visible
@@ -2516,7 +2588,7 @@ function renderProductMaster(){
     }
     html+=`</div>`;
   });
-  document.getElementById('po-pmContent').innerHTML=html;
+  var _pm=document.getElementById('po-pmContent');if(_pm)_pm.innerHTML=html;
 }
 function toggleMaster(name){ collapsedMaster[name]=!collapsedMaster[name]; renderProductMaster(); }
 function updateBarcodeField(oldBarcode, newBarcode){
@@ -2529,15 +2601,15 @@ function updateBarcodeField(oldBarcode, newBarcode){
   });
   // Move store entries
   PO_STORES.forEach(s=>{
-    if(po_data.storeEntries[s] && po_data.storeEntries[s][oldBarcode]){
-      po_data.storeEntries[s][newBarcode] = po_data.storeEntries[s][oldBarcode];
-      delete po_data.storeEntries[s][oldBarcode];
+    if(poOrder().storeEntries[s] && poOrder().storeEntries[s][oldBarcode]){
+      poOrder().storeEntries[s][newBarcode] = poOrder().storeEntries[s][oldBarcode];
+      delete poOrder().storeEntries[s][oldBarcode];
     }
   });
   // Move sent values
-  if(po_data.sentValues && po_data.sentValues[oldBarcode]){
-    po_data.sentValues[newBarcode] = po_data.sentValues[oldBarcode];
-    delete po_data.sentValues[oldBarcode];
+  if(poOrder().sentValues && poOrder().sentValues[oldBarcode]){
+    poOrder().sentValues[newBarcode] = poOrder().sentValues[oldBarcode];
+    delete poOrder().sentValues[oldBarcode];
   }
   renderProductMaster();
 }
@@ -2612,11 +2684,11 @@ function importProducts(){
         cat.items.push(newItem);
         // Initialise store entries
         PO_STORES.forEach(s=>{
-          if(!po_data.storeEntries[s]) po_data.storeEntries[s]={};
-          po_data.storeEntries[s][barcode]={boh:'',req:''};
+          if(!poOrder().storeEntries[s]) poOrder().storeEntries[s]={};
+          poOrder().storeEntries[s][barcode]={boh:'',req:''};
         });
-        if(!po_data.sentValues) po_data.sentValues={};
-        po_data.sentValues[barcode]={fbs:'',bl:'',wyl:''};
+        if(!poOrder().sentValues) poOrder().sentValues={};
+        poOrder().sentValues[barcode]={fbs:'',bl:'',wyl:''};
         added++;
       });
       saveToCloud();
@@ -2731,8 +2803,8 @@ function deleteProd(barcode){
     cat.items = cat.items.filter(i=>i.barcode!==barcode);
   });
   // Clean up related data
-  PO_STORES.forEach(s=>{ if(po_data.storeEntries[s]) delete po_data.storeEntries[s][barcode]; });
-  if(po_data.sentValues) delete po_data.sentValues[barcode];
+  PO_STORES.forEach(s=>{ if(poOrder().storeEntries[s]) delete poOrder().storeEntries[s][barcode]; });
+  if(poOrder().sentValues) delete poOrder().sentValues[barcode];
   saveToCloud();
   renderProductMaster();
   showToast('Product deleted');
@@ -2742,6 +2814,7 @@ function deleteProd(barcode){
 // DISPATCH
 // ═══════════════════════════════════════════
 function renderDispatch(){
+  var el=document.getElementById('po-order-tabs-td');if(el)el.innerHTML=renderOrderTabs('po-order-tabs-td');
   if(!po_data) return;
   const storesToShow = po_appRole==='buyer' ? PO_STORES : [po_appStore];
   let html = '';
@@ -2749,7 +2822,7 @@ function renderDispatch(){
 
   storesToShow.forEach(store=>{
     const key = PO_STORE_KEYS[store];
-    const dStatus = po_data.dispatchStatuses[store];
+    const dStatus = poOrder().dispatchStatuses[store];
     const isFinalised = dStatus==='finalised';
     const rows = allActive().filter(i=>getSent(i.barcode,key)>0);
     const hasEntries = rows.length > 0;
@@ -2790,7 +2863,7 @@ function renderDispatch(){
         return;
       }
       // Store: read from latest snapshot for this store
-      const latestSnap=(po_data.dispatchHistory||[]).find(s=>s.store===store);
+      const latestSnap=(poOrder().dispatchHistory||[]).find(s=>s.store===store);
       const snapKey=PO_STORE_KEYS[store];
       html+=`<div class="card mb16">
         <div class="card-header">
@@ -2841,7 +2914,7 @@ function renderDispatch(){
     </div>`;
   }
 
-  document.getElementById('po-dispContent').innerHTML = html;
+  var _dc=document.getElementById('po-dispContent');if(_dc)_dc.innerHTML=html;
 }
 function finaliseDispatch(store){
   if(!po_data) return;
@@ -2860,36 +2933,36 @@ function finaliseDispatch(store){
     savedAt: new Date().toISOString(),
     label: store + ' — ' + new Date().toLocaleString('en-AU',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}),
     dispatchStatus: 'finalised',
-    storeEntries: JSON.parse(JSON.stringify(po_data.storeEntries[store]||{})),
+    storeEntries: JSON.parse(JSON.stringify(poOrder().storeEntries[store]||{})),
     sentValues: {},
     categories: JSON.parse(JSON.stringify(po_data.categories))
   };
-  allActive().forEach(i=>{ if(getSent(i.barcode,key)>0) snap.sentValues[i.barcode]=JSON.parse(JSON.stringify(po_data.sentValues[i.barcode]||{})); });
-  if(!po_data.dispatchHistory) po_data.dispatchHistory=[];
-  po_data.dispatchHistory.unshift(snap);
-  if(po_data.dispatchHistory.length>50) po_data.dispatchHistory=po_data.dispatchHistory.slice(0,50);
+  allActive().forEach(i=>{ if(getSent(i.barcode,key)>0) snap.sentValues[i.barcode]=JSON.parse(JSON.stringify(poOrder().sentValues[i.barcode]||{})); });
+  if(!poOrder().dispatchHistory) poOrder().dispatchHistory=[];
+  poOrder().dispatchHistory.unshift(snap);
+  if(poOrder().dispatchHistory.length>50) poOrder().dispatchHistory=poOrder().dispatchHistory.slice(0,50);
 
   // Mark dispatch as finalised
-  po_data.dispatchStatuses[store]='finalised';
+  poOrder().dispatchStatuses[store]='finalised';
   // Clear BOH and customer requests for that store
-  if(po_data.storeEntries[store]){
-    Object.keys(po_data.storeEntries[store]).forEach(b=>{
-      po_data.storeEntries[store][b]={boh:'',req:''};
+  if(poOrder().storeEntries[store]){
+    Object.keys(poOrder().storeEntries[store]).forEach(b=>{
+      poOrder().storeEntries[store][b]={boh:'',req:''};
     });
   }
   // Clear sent values for this store from the live data
   // (snapshot already saved above for store printing)
   allActive().forEach(i=>{
-    if(po_data.sentValues[i.barcode]){
-      const sv=po_data.sentValues[i.barcode];
+    if(poOrder().sentValues[i.barcode]){
+      const sv=poOrder().sentValues[i.barcode];
       if(key==='fbs') sv.fbs='';
       else if(key==='bl') sv.bl='';
       else if(key==='wyl') sv.wyl='';
     }
   });
-  po_data.storeStatuses[store]='draft';
-  if(!po_data.dispatchMeta[store]) po_data.dispatchMeta[store]={};
-  po_data.dispatchMeta[store].printed=false;
+  poOrder().storeStatuses[store]='draft';
+  if(!poOrder().dispatchMeta[store]) poOrder().dispatchMeta[store]={};
+  poOrder().dispatchMeta[store].printed=false;
   saveToCloud();
   renderDispatch();
   renderBuyer();
@@ -2898,15 +2971,15 @@ function finaliseDispatch(store){
 // [reopenDispatch removed]
 
 function togglePrinted(store){
-  if(!po_data.dispatchMeta[store]) po_data.dispatchMeta[store]={printed:false,emailed:false};
-  po_data.dispatchMeta[store].printed=!po_data.dispatchMeta[store].printed;
+  if(!poOrder().dispatchMeta[store]) poOrder().dispatchMeta[store]={printed:false,emailed:false};
+  poOrder().dispatchMeta[store].printed=!poOrder().dispatchMeta[store].printed;
   saveToCloud(); renderDispatch();
 }
 function printDispatch(store){
   if(!po_data) return;
   const key = PO_STORE_KEYS[store];
   // Read from latest snapshot for this store
-  const latestSnap=(po_data.dispatchHistory||[]).find(s=>s.store===store);
+  const latestSnap=(poOrder().dispatchHistory||[]).find(s=>s.store===store);
   const rows=[];
   if(latestSnap){
     (latestSnap.categories||[]).forEach(cat=>{
@@ -2938,27 +3011,27 @@ function printDispatch(store){
     h += `<tr><td colspan="4" style="text-align:center;padding:20px">No dispatch quantities entered.</td></tr>`;
   }
   h += `</tbody></table>`;
-  document.getElementById('printArea').innerHTML = h;
+  var _g_printArea=document.getElementById('printArea');if(_g_printArea)_g_printArea.innerHTML=h;
   setTimeout(function(){
     window.print();
     // NOW clear sentValues for this store (archive after print)
     allActive().forEach(i=>{
-      if(po_data.sentValues[i.barcode]){
-        const sv = po_data.sentValues[i.barcode];
+      if(poOrder().sentValues[i.barcode]){
+        const sv = poOrder().sentValues[i.barcode];
         if(key==='fbs') sv.fbs = '';
         else if(key==='bl') sv.bl = '';
         else if(key==='wyl') sv.wyl = '';
       }
     });
-    po_data.dispatchStatuses[store] = 'draft';
-    if(!po_data.dispatchMeta[store]) po_data.dispatchMeta[store]={};
-    po_data.dispatchMeta[store].printed = true;
+    poOrder().dispatchStatuses[store] = 'draft';
+    if(!poOrder().dispatchMeta[store]) poOrder().dispatchMeta[store]={};
+    poOrder().dispatchMeta[store].printed = true;
     saveToCloud();
     renderDispatch();
     showToast(store+' dispatch printed — archived for next cycle');
   }, 80);
 }
-function toggleEmailed(store){ po_data.dispatchMeta[store].emailed=!po_data.dispatchMeta[store].emailed; renderDispatch(); }
+function toggleEmailed(store){ poOrder().dispatchMeta[store].emailed=!poOrder().dispatchMeta[store].emailed; renderDispatch(); }
 
 // [INIT removed - handled by unified shell]
 
@@ -2983,9 +3056,17 @@ function poInit(role, store) {
         var tt = document.getElementById('po-trTotal');
         if (tt) tt.value = (po_data && po_data.transportTotal) || 8;
         renderStoreEntry();
+        if(po_appRole === 'buyer'){
+          renderBuyer();
+          renderDispatch();
+        }
     }).catch(function() {
         if (!po_data) po_data = buildDefaultData();
         renderStoreEntry();
+        if(po_appRole === 'buyer'){
+          renderBuyer();
+          renderDispatch();
+        }
     });
 }
 
@@ -3031,7 +3112,7 @@ var hp_boosts = {MON:5,TUE:5,WED:5,THU:5,FRI:5,SAT:5,SUN:5};
 
 function hp_selectStore(store){
   _hp_store = store;
-  document.getElementById('hp-store-title').textContent = store + ' — Select Department';
+  var _el_hp_store_title=document.getElementById('hp-store-title');if(_el_hp_store_title)_el_hp_store_title.textContent=store + ' — Select Department';
   goTo('s-hourly-dept');
 }
 
