@@ -2332,7 +2332,8 @@ function renderOrderSummary(){
       var ctn = parseFloat(item.ctn) || 0;
       if(!itemMap[barcode]){
         itemMap[barcode] = {
-          itemNo: item.itemNo || barcode,
+          itemNo: item.itemNo || '',
+          barcode: barcode,
           desc: item.desc || barcode,
           pack: item.pack || '',
           packQty: packQty,
@@ -2378,7 +2379,7 @@ function renderOrderSummary(){
 
   html += '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">';
   html += '<thead><tr style="background:var(--s100)">';
-  ['Type','I No','Description','Location','Forbes Qty','WW Qty','Blayney Qty','Total Qty','UOM','Unit Cost'].forEach(function(h){
+  ['Type','Item No','Barcode','Description','Location','Forbes Qty','WW Qty','Blayney Qty','Total Qty','UOM','Unit Cost'].forEach(function(h){
     html += '<th style="padding:10px 10px;text-align:left;font-weight:700;border-bottom:2px solid var(--s200);white-space:nowrap">'+h+'</th>';
   });
   html += '</tr></thead><tbody>';
@@ -2389,6 +2390,7 @@ function renderOrderSummary(){
     html += '<tr style="background:'+rowBg+'">';
     html += '<td style="padding:8px 10px">ITEM</td>';
     html += '<td style="padding:8px 10px">'+esc(item.itemNo)+'</td>';
+    html += '<td style="padding:8px 10px;color:var(--s500)">'+esc(item.barcode)+'</td>';
     html += '<td style="padding:8px 10px;font-weight:500">'+esc(item.desc)+'</td>';
     html += '<td style="padding:8px 10px">F WH</td>';
     html += '<td style="padding:8px 10px;text-align:right">'+item.forbesBaseQty.toFixed(2)+'</td>';
@@ -2445,7 +2447,7 @@ function exportOrderSummary(){
       var packQty = parseFloat((item.pack||'1').split(' ')[0]) || 1;
       var ctn = parseFloat(item.ctn) || 0;
       if(!itemMap[barcode]){
-        itemMap[barcode] = {itemNo:item.itemNo||barcode, desc:item.desc||barcode, packQty:packQty, totalBaseQty:0, totalCost:0};
+        itemMap[barcode] = {itemNo:item.itemNo||'', barcode:barcode, desc:item.desc||barcode, packQty:packQty, totalBaseQty:0, totalCost:0};
       }
       itemMap[barcode].totalBaseQty += qty * packQty;
       itemMap[barcode].totalCost += qty * ctn;
