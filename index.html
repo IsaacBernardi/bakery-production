@@ -759,6 +759,7 @@ tbody tr:hover{background:var(--s50)}
           <div class="flex gap8 flex-wrap mb16">
             <button class="btn btn-blue btn-sm" onclick="addProduct()">+ Add Product</button>
             <button class="btn btn-outline btn-sm" onclick="importProducts()">&#x1F4C2; Import Excel</button>
+              <button class="btn btn-outline btn-sm" onclick="exportProductTemplate()">&#x1F4E5; Export Excel Template</button>
             <input type="text" id="po-newCat" placeholder="New category name" style="width:200px">
             <button class="btn btn-outline btn-sm" onclick="addCategory()">+ Add Category</button>
           </div>
@@ -836,7 +837,22 @@ tbody tr:hover{background:var(--s50)}
 
 
 
-<div id="sharedToast"></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 <script>
 var BUYER_PIN = '1234';
 
@@ -2473,12 +2489,13 @@ function renderProductMaster(){
       </div>`;
     if(!col){
       html+=`<div class="table-wrap" style="border:none"><table><thead><tr>
-        <th>Barcode</th><th>Description</th><th>Category</th><th>Pack Qty</th><th>Unit</th><th>Display</th><th>Active</th><th></th>
+        <th>Item No.</th><th>Barcode</th><th>Description</th><th>Category</th><th>Pack Qty</th><th>Unit</th><th>Display</th><th>Sell UOM</th><th>Active</th><th></th>
       </tr></thead><tbody>`;
       cat.items.forEach(item=>{
         const parts=item.pack.split(' '); const qty=parts[0]||'1'; const unit=parts[1]||'KG';
         const catOpts=catNames().map(n=>`<option value="${esc(n)}"${n===cat.name?' selected':''}>${esc(n)}</option>`).join('');
         html+=`<tr>
+          <td><input type="text" style="width:90px;font-size:12px" value="${esc(item.itemNo||'')}" placeholder="Item No." onchange="updateProdField('${esc(item.barcode)}','itemNo',this.value)"></td>
           <td><input type="text" style="width:110px;font-size:12px" value="${esc(item.barcode)}" placeholder="Enter barcode" onchange="updateBarcodeField('${esc(item.barcode)}',this.value)"></td>
           <td><input type="text" style="width:220px" value="${esc(item.desc)}" onchange="updateProdField('${esc(item.barcode)}','desc',this.value)"></td>
           <td>
@@ -2487,6 +2504,7 @@ function renderProductMaster(){
           <td><input type="number" style="width:65px" value="${esc(qty)}" onchange="updatePack('${esc(item.barcode)}',this.value,'${esc(unit)}')"></td>
           <td><input type="text" style="width:65px" value="${esc(unit)}" onchange="updatePack('${esc(item.barcode)}','${esc(qty)}',this.value)"></td>
           <td style="font-weight:500">${esc(item.pack)}</td>
+          <td><input type="text" style="width:80px;font-size:12px" value="${esc(item.sellUOM||'')}" placeholder="Sell UOM" onchange="updateProdField('${esc(item.barcode)}','sellUOM',this.value)"></td>
           <td><input type="checkbox" ${item.active?'checked':''} onchange="updateProdField('${esc(item.barcode)}','active',this.checked)"></td>
           <td style="white-space:nowrap">
             <button class="btn btn-rose btn-sm" onclick="archiveProd('${esc(item.barcode)}')">Archive</button>
@@ -2565,19 +2583,21 @@ function importProducts(){
       if(rows.length < 2){ showToast('No data found in file', 4000); return; }
       // Find header row (skip if first row looks like headers)
       const headers = rows[0].map(h=>String(h).toLowerCase().trim());
-      const hasHeader = headers.some(h=>['barcode','description','category','pack'].some(k=>h.includes(k)));
+      const hasHeader = headers.some(h=>['item','barcode','description','category','pack'].some(k=>h.includes(k)));
       const dataRows = hasHeader ? rows.slice(1) : rows;
-      // Column indices: Barcode, Description, Category, Pack Qty, Unit
-      const bIdx=0, dIdx=1, cIdx=2, qIdx=3, uIdx=4;
+      // Column indices: Item No., Item No., Item No., Barcode, Description, Category, Pack Qty, Unit, Sell UOM, Sell UOM, Sell UOM
+      const iIdx=0, bIdx=1, dIdx=2, cIdx=3, qIdx=4, uIdx=5, suIdx=6;
       let added=0, skipped=0;
       dataRows.forEach(row=>{
         if(!row || !row[bIdx] || !row[dIdx]) return; // skip empty rows
+        const itemNo = String(row[iIdx]||'').trim();
         const barcode = String(row[bIdx]).trim();
         const desc = String(row[dIdx]).trim();
         const catName = String(row[cIdx]||'Imported').trim() || 'Imported';
         const packQty = String(row[qIdx]||'1').trim() || '1';
         const unit = String(row[uIdx]||'KG').trim() || 'KG';
         const pack = packQty + ' ' + unit;
+        const sellUOM = String(row[suIdx]||'').trim();
         if(!barcode || !desc){ skipped++; return; }
         // Check for duplicate barcode
         const exists = po_data.categories.some(cat=>cat.items.some(i=>i.barcode===barcode));
@@ -2588,7 +2608,7 @@ function importProducts(){
           cat = {name:catName, items:[]};
           po_data.categories.push(cat);
         }
-        const newItem = {barcode, desc, pack, ctn:0, previousCtn:0, sell:0, previousSell:0, active:true};
+        const newItem = {itemNo, barcode, desc, pack, sellUOM, ctn:0, previousCtn:0, sell:0, previousSell:0, active:true};
         cat.items.push(newItem);
         // Initialise store entries
         PO_STORES.forEach(s=>{
@@ -2610,6 +2630,85 @@ function importProducts(){
     }
   };
   input.click();
+}
+function exportProductTemplate(){
+  var headers = ['Item No.','Barcode','Description','Category','Pack Qty','Unit','Sell UOM'];
+  var rows = [headers];
+  if(po_data && po_data.categories){
+    po_data.categories.forEach(function(cat){
+      (cat.items||[]).forEach(function(item){
+        var parts=(item.pack||'1 KG').split(' ');
+        rows.push([
+          item.itemNo||'',
+          item.barcode||'',
+          item.desc||'',
+          cat.name||'',
+          parts[0]||'1',
+          parts[1]||'KG',
+          item.sellUOM||''
+        ]);
+      });
+    });
+  }
+  if(window.XLSX){
+    var ws=XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols']=[{wch:12},{wch:14},{wch:35},{wch:20},{wch:10},{wch:8},{wch:12}];
+    var wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,ws,'Products');
+    XLSX.writeFile(wb,'product_template.xlsx');
+    showToast('Template exported — '+(rows.length-1)+' products');
+  } else {
+    var csv=rows.map(function(r){return r.map(function(v){return '"'+String(v).replace(/"/g,'""')+'"';}).join(',');}).join('\n');
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+    a.download='product_template.csv';
+    a.click();
+    showToast('Template exported — '+(rows.length-1)+' products');
+  }
+}
+function exportProductTemplate(){
+  // Build rows: headers + one row per product across all categories
+  var headers = ['Item No.','Barcode','Description','Category','Pack Qty','Unit','Sell UOM'];
+  var rows = [headers];
+
+  if(po_data && po_data.categories){
+    po_data.categories.forEach(function(cat){
+      (cat.items || []).forEach(function(item){
+        var parts = (item.pack||'1 KG').split(' ');
+        var packQty = parts[0] || '1';
+        var unit = parts[1] || 'KG';
+        rows.push([
+          item.itemNo || '',
+          item.barcode || '',
+          item.desc || '',
+          cat.name || '',
+          packQty,
+          unit,
+          item.sellUOM || ''
+        ]);
+      });
+    });
+  }
+
+  // Build XLSX using SheetJS
+  if(window.XLSX){
+    var ws = XLSX.utils.aoa_to_sheet(rows);
+    // Set column widths
+    ws['!cols'] = [{wch:12},{wch:14},{wch:35},{wch:20},{wch:10},{wch:8},{wch:12}];
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Products');
+    XLSX.writeFile(wb, 'product_template.xlsx');
+    showToast('Template exported — ' + (rows.length-1) + ' products');
+  } else {
+    // Fallback: CSV download
+    var csv = rows.map(function(r){ return r.map(function(v){ return '"'+String(v).replace(/"/g,'""')+'"'; }).join(','); }).join('\n');
+    var blob = new Blob([csv], {type:'text/csv'});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'product_template.csv';
+    a.click();
+    showToast('Template exported as CSV — ' + (rows.length-1) + ' products');
+  }
 }
 
 function addProduct(){
@@ -3374,6 +3473,7 @@ function hp_printSchedule(){
 }
 </script>
 
+
 <!-- Special Groups Modal -->
 <div id="sgModal">
   <div class="sg-modal-card">
@@ -3393,4 +3493,5 @@ function hp_printSchedule(){
 </div>
 
 <div id="printArea" style="display:none"></div>
->
+</body>
+</html>
