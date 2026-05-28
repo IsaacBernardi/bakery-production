@@ -2981,6 +2981,7 @@ function finaliseDispatch(store){
   renderDispatch();
   renderBuyer();
   showToast(store+' dispatch finalised — entries cleared');
+  setTimeout(function(){ showTab('po-th'); }, 500);
 }
 // [reopenDispatch removed]
 
@@ -3057,6 +3058,7 @@ function printDispatch(store){
     saveToCloud();
     renderDispatch();
     showToast(store+' dispatch printed — archived for next cycle');
+    setTimeout(function(){ showTab('po-th'); }, 500);
   }, 80);
 }
 function toggleEmailed(store){ poOrder().dispatchMeta[store].emailed=!poOrder().dispatchMeta[store].emailed; renderDispatch(); }
