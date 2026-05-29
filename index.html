@@ -2774,14 +2774,17 @@ function recalc(){
   var _sPT=document.getElementById('po-sPT');if(_sPT)_sPT.textContent='$'+total.toFixed(2);
   const onc=oncostFrac();
   var _sOnc=document.getElementById('po-sOnc');if(_sOnc)_sOnc.textContent=(onc*100).toFixed(2)+'%';
-  let retail=0,netCost=0,gpSum=0;
+  let retail=0,netCost=0;
   items.forEach(i=>{
     const ts=getSent(i.barcode,'fbs')+getSent(i.barcode,'bl')+getSent(i.barcode,'wyl');
-    retail+=i.sell*ts; netCost+=i.ctn*(1+onc)*ts; gpSum+=calcGP(i.sell,i.ctn,i.pack);
+    const ps=packSize(i.pack);
+    retail+=i.sell*ts*ps;          // sell price per unit × total units
+    netCost+=i.ctn*(1+onc)*ts;     // cost per pack × total packs (oncost included)
   });
+  const gpPct=retail>0?((retail-netCost)/retail*100):0;
   var _sRet=document.getElementById('po-sRet');if(_sRet)_sRet.textContent='$'+retail.toFixed(2);
   var _sNet=document.getElementById('po-sNet');if(_sNet)_sNet.textContent='$'+netCost.toFixed(2);
-  var _sGP=document.getElementById('po-sGP');if(_sGP)_sGP.textContent=(items.length?(gpSum/items.length).toFixed(1):'0.0')+'%';
+  var _sGP=document.getElementById('po-sGP');if(_sGP)_sGP.textContent=gpPct.toFixed(1)+'%';
 }
 function setFilter(f){
   po_activeFilter=f;
@@ -2805,7 +2808,7 @@ function matchFilter(item){
 function renderBuyer(){
   if(!po_data || !poOrder()) return;
   recalc();
-  let html='';
+  let html='<div style="text-align:right;margin-bottom:8px"><button class="btn btn-outline btn-sm" onclick="printBuyerDashboard()">&#x1F5A8; Print Buyer Dashboard</button></div>';
   sortedCats().forEach(cat=>{
     const actives=cat.items.filter(i=>i.active&&matchFilter(i));
     const col=collapsedBuyer[cat.name];
@@ -2840,6 +2843,132 @@ function renderBuyer(){
     });
   });
   var _bt=document.getElementById('po-bTbody');if(_bt)_bt.innerHTML=html;
+}
+function printBuyerDashboard(){
+  if(!po_data) return;
+  const items = allActive().filter(i => matchFilter(i));
+  const onc = oncostFrac();
+
+  // Build header HTML
+  let h = `<div style="font-family:-apple-system,sans-serif;font-size:11px">`;
+  h += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">`;
+  h += `<div style="font-size:14px;font-weight:700">Buyer Dashboard — ${new Date().toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div>`;
+  h += `</div>`;
+
+  // Stat summary row
+  let retail=0, netCost=0;
+  items.forEach(i=>{
+    const ts=getSent(i.barcode,'fbs')+getSent(i.barcode,'bl')+getSent(i.barcode,'wyl');
+    retail+=i.sell*ts*packSize(i.pack);
+    netCost+=i.ctn*(1+onc)*ts;
+  });
+  const gpPct=retail>0?((retail-netCost)/retail*100):0;
+  h += `<div style="display:flex;gap:20px;margin-bottom:10px;font-size:11px">`;
+  h += `<span><b>Est. Retail:</b> $${retail.toFixed(2)}</span>`;
+  h += `<span><b>Net Cost:</b> $${netCost.toFixed(2)}</span>`;
+  h += `<span><b>Avg GP:</b> ${gpPct.toFixed(1)}%</span>`;
+  h += `<span><b>Oncost:</b> ${(onc*100).toFixed(2)}%</span>`;
+  h += `</div>`;
+
+  // Table
+  h += `<table style="width:100%;border-collapse:collapse;font-size:9px;table-layout:fixed">`;
+  h += `<thead><tr style="background:#f0f0f0">`;
+  const cols = [
+    {label:'Barcode',    w:'8%'},
+    {label:'Product',    w:'16%'},
+    {label:'Purch UOM',  w:'6%'},
+    {label:'Requests',   w:'10%'},
+    {label:'FBS BOH',    w:'5%'},
+    {label:'FBS Sent',   w:'5%'},
+    {label:'BL BOH',     w:'5%'},
+    {label:'BL Sent',    w:'5%'},
+    {label:'WYL BOH',    w:'5%'},
+    {label:'WYL Sent',   w:'5%'},
+    {label:'CTN Cost',   w:'6%'},
+    {label:'Unit Net',   w:'6%'},
+    {label:'Sell',       w:'5%'},
+    {label:'GP%',        w:'4%'},
+    {label:'New Cost',   w:'6%'},
+    {label:'New Sell',   w:'5%'},
+    {label:'Sell UOM',   w:'4%'},
+    {label:'New GP%',    w:'4%'},
+  ];
+  cols.forEach(col => {
+    h += `<th style="padding:4px 3px;border:0.5px solid #ccc;text-align:left;font-size:8px;width:${col.w};overflow:hidden">${col.label}</th>`;
+  });
+  h += `</tr></thead><tbody>`;
+
+  const grouped = {};
+  po_data.categories.forEach(cat => {
+    const catItems = cat.items.filter(i => i.active && matchFilter(i));
+    if(catItems.length) grouped[cat.name] = catItems;
+  });
+
+  Object.entries(grouped).forEach(([catName, catItems]) => {
+    h += `<tr><td colspan="${cols.length}" style="padding:3px 4px;background:#e8e8e8;font-weight:700;font-size:8px">${catName}</td></tr>`;
+    catItems.forEach(item => {
+      const gp = calcGP(item.sell, item.ctn, item.pack);
+      const nc = po_newCostVals[item.barcode] ?? '';
+      const ns = newSellVals[item.barcode] ?? '';
+      const nsSell = ns===''?item.sell:parseFloat(ns)||item.sell;
+      const ncCtn = nc!==''?parseFloat(nc):item.ctn;
+      const newGP = (ns!==''||nc!=='')?calcGP(nsSell,ncCtn,item.pack):null;
+      const reqs = PO_STORES.map(s => {
+        const e = poOrder().storeEntries[s]?.[item.barcode]||{};
+        return e.req ? `${PO_STORE_SHORT[s]}:${e.req}` : null;
+      }).filter(Boolean).join(' | ');
+      const tr = (i, bold) => `<td style="padding:3px 2px;border:0.5px solid #ddd;${bold?'font-weight:600':''}overflow:hidden;white-space:nowrap">${i}</td>`;
+      h += `<tr>`;
+      h += tr(item.barcode, false);
+      h += `<td style="padding:3px 2px;border:0.5px solid #ddd;overflow:hidden;white-space:nowrap;font-weight:500" title="${item.desc}">${item.desc}</td>`;
+      h += tr(item.pack, false);
+      h += tr(reqs||'—', false);
+      h += tr(getBoh('Forbes',item.barcode)||'', false);
+      h += tr(getSent(item.barcode,'fbs')||'', true);
+      h += tr(getBoh('Blayney',item.barcode)||'', false);
+      h += tr(getSent(item.barcode,'bl')||'', true);
+      h += tr(getBoh('West Wyalong',item.barcode)||'', false);
+      h += tr(getSent(item.barcode,'wyl')||'', true);
+      h += tr('$'+item.ctn.toFixed(2), false);
+      h += tr('$'+unitNet(item.ctn,item.pack).toFixed(4), false);
+      h += tr('$'+item.sell.toFixed(2), false);
+      h += tr(gp.toFixed(1)+'%', false);
+      h += tr(nc!==''?'$'+parseFloat(nc).toFixed(2):'', false);
+      h += tr(ns!==''?'$'+parseFloat(ns).toFixed(2):'', false);
+      h += tr(item.sellUOM||'', false);
+      h += tr(newGP!==null?newGP.toFixed(1)+'%':'', false);
+      h += `</tr>`;
+    });
+  });
+  h += `</tbody></table></div>`;
+
+  try {
+    var pw = window.open('','_blank','width=1200,height=800');
+    if(!pw) throw new Error('blocked');
+    pw.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Buyer Dashboard</title><style>' +
+      'body{margin:8mm;font-family:-apple-system,BlinkMacSystemFont,sans-serif}' +
+      '@page{size:A4 landscape;margin:8mm}' +
+      '@media print{thead{display:table-header-group}tr{page-break-inside:avoid}}' +
+      'table{width:100%;border-collapse:collapse}' +
+      '</style></head><body>'+h+'</body></html>');
+    pw.document.close();
+    pw.focus();
+    setTimeout(function(){ pw.print(); pw.close(); }, 500);
+  } catch(e) {
+    // Fallback: print via hidden iframe (works when window.open is blocked)
+    var ifrm = document.getElementById('_printIframe');
+    if(!ifrm){ ifrm=document.createElement('iframe'); ifrm.id='_printIframe'; ifrm.style.cssText='position:fixed;top:-9999px;left:-9999px;width:0;height:0;border:0'; document.body.appendChild(ifrm); }
+    var doc = ifrm.contentWindow.document;
+    doc.open();
+    doc.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Buyer Dashboard</title><style>' +
+      'body{margin:8mm;font-family:-apple-system,BlinkMacSystemFont,sans-serif}' +
+      '@page{size:A4 landscape;margin:8mm}' +
+      '@media print{thead{display:table-header-group}tr{page-break-inside:avoid}}' +
+      'table{width:100%;border-collapse:collapse}' +
+      '</style></head><body>'+h+'</body></html>');
+    doc.close();
+    setTimeout(function(){ ifrm.contentWindow.focus(); ifrm.contentWindow.print(); }, 500);
+  }
 }
 function toggleBuyer(name){ collapsedBuyer[name]=!collapsedBuyer[name]; renderBuyer(); }
 function updateSent(b,k,v){
