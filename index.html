@@ -2769,11 +2769,22 @@ function lockStore(){ const s=effectiveStore(); poOrder().storeStatuses[s]='lock
 // ═══════════════════════════════════════════
 function recalc(){
   if(!po_data)return;
-  const items=allActive();
-  const total=items.reduce((s,i)=>s+i.ctn,0);
-  var _sPT=document.getElementById('po-sPT');if(_sPT)_sPT.textContent='$'+total.toFixed(2);
   const onc=oncostFrac();
-  var _sOnc=document.getElementById('po-sOnc');if(_sOnc)_sOnc.textContent=(onc*100).toFixed(2)+'%';
+  const market=parseFloat(document.getElementById('marketTotal')?.value)||po_data.marketTotal||0;
+  const transport=parseFloat(document.getElementById('transportTotal')?.value)||po_data.transportTotal||0;
+  // Calculate est. net cost = sum of (sent qty × ctn cost × (1+onc)) across all items
+  const items=allActive();
+  let recalcNetCost=0;
+  items.forEach(i=>{
+    const ts=getSent(i.barcode,'fbs')+getSent(i.barcode,'bl')+getSent(i.barcode,'wyl');
+    recalcNetCost+=i.ctn*(1+onc)*ts;
+  });
+  // Product Total = est. net cost + market cost + transport cost
+  const productTotal=recalcNetCost+market+transport;
+  var _sPT=document.getElementById('po-sPT');if(_sPT)_sPT.textContent='$'+productTotal.toFixed(2);
+  // Oncost % = (market + transport) / netCost × 100
+  const oncPct=recalcNetCost>0?((market+transport)/recalcNetCost*100):0;
+  var _sOnc=document.getElementById('po-sOnc');if(_sOnc)_sOnc.textContent=oncPct.toFixed(2)+'%';
   let retail=0,netCost=0;
   items.forEach(i=>{
     const ts=getSent(i.barcode,'fbs')+getSent(i.barcode,'bl')+getSent(i.barcode,'wyl');
