@@ -2913,8 +2913,8 @@ function setBuyerMode(mode){
   if(ordBtn) ordBtn.className = 'pill' + (mode==='orders'?' active':'');
   if(alcBtn) alcBtn.className = 'pill' + (mode==='alloc'?' active':'');
   // Hide alloc btn area when returning to orders
-  var btnArea = document.getElementById('po-alloc-btn-area');
-  if(btnArea && mode !== 'alloc') btnArea.style.display = 'none';
+  var hint = document.getElementById('po-alloc-hint');
+  if(hint && mode !== 'alloc') hint.style.display = 'none';
   renderBuyer();
 }
 function renderWhsAlloc(){
@@ -2959,17 +2959,19 @@ function renderWhsAlloc(){
   }
   el.innerHTML = rows;
 
-  // Show finalise button area
-  var btnArea = document.getElementById('po-alloc-btn-area');
-  if(!btnArea){
-    btnArea = document.createElement('div');
-    btnArea.id = 'po-alloc-btn-area';
-    btnArea.style.cssText = 'padding:12px 0;display:flex;gap:10px;align-items:center';
-    btnArea.innerHTML = '<button class="btn btn-dark" onclick="finaliseWhsAlloc()">&#x2713; Finalise WHS Allocation</button><button class="btn btn-outline" onclick="clearWhsAlloc()">Clear</button><span id="po-alloc-status" style="font-size:12px;color:var(--s500)"></span>';
+  // Show hint
+  var hint = document.getElementById('po-alloc-hint');
+  if(!hint){
+    hint = document.createElement('div');
+    hint.id = 'po-alloc-hint';
+    hint.style.cssText = 'padding:10px 0;font-size:12px;color:var(--s500)';
+    hint.innerHTML = 'ℹ️ Click <strong>Dispatch Sheet</strong> tab to apply allocations to each store dispatch.';
     var tableWrap = document.querySelector('#po-tb .table-wrap');
-    if(tableWrap) tableWrap.parentNode.insertBefore(btnArea, tableWrap);
+    if(tableWrap) tableWrap.parentNode.insertBefore(hint, tableWrap);
   }
-  btnArea.style.display = 'flex';
+  hint.style.display = 'block';
+
+
 }
 
 function setAlloc(barcode, key, val){
@@ -2994,80 +2996,7 @@ function clearWhsAlloc(){
   showToast('WHS allocations cleared');
 }
 
-function finaliseWhsAlloc(){
-  if(!po_data || !poOrder()) return;
 
-  // Check any entries exist
-  var hasAny = Object.keys(whsAllocVals).some(function(b){
-    var a = whsAllocVals[b];
-    return (parseFloat(a.fbs)||0) + (parseFloat(a.bl)||0) + (parseFloat(a.wyl)||0) > 0;
-  });
-  if(!hasAny){ showToast('No allocation quantities entered', 3000); return; }
-  if(!confirm('Finalise WHS Allocation? This will add quantities to each store\'s dispatch sheet.')) return;
-
-  // Track which stores received allocations
-  var storesToReset = {Forbes: false, Blayney: false, 'West Wyalong': false};
-
-  // Build snapshot for allocationHistory / Export Transfer Qty
-  var snap = {
-    store: 'WHS-ALLOC',
-    savedAt: new Date().toISOString(),
-    label: 'WHS Allocation — ' + new Date().toLocaleString('en-AU',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}),
-    dispatchStatus: 'allocation',
-    type: 'allocation',
-    storeEntries: {},
-    sentValues: {},
-    categories: JSON.parse(JSON.stringify(po_data.categories))
-  };
-
-  Object.keys(whsAllocVals).forEach(function(barcode){
-    var alloc = whsAllocVals[barcode];
-    var fbs = parseFloat(alloc.fbs)||0;
-    var bl  = parseFloat(alloc.bl)||0;
-    var wyl = parseFloat(alloc.wyl)||0;
-    if(!fbs && !bl && !wyl) return;
-
-    // Ensure sentValues entry exists
-    if(!poOrder().sentValues[barcode]) poOrder().sentValues[barcode] = {fbs:0, bl:0, wyl:0, whs:0};
-    var sv = poOrder().sentValues[barcode];
-
-    // Add allocation quantities
-    if(fbs > 0){
-      sv.fbs = (parseFloat(sv.fbs)||0) + fbs;
-      storesToReset['Forbes'] = true;
-    }
-    if(bl > 0){
-      sv.bl = (parseFloat(sv.bl)||0) + bl;
-      storesToReset['Blayney'] = true;
-    }
-    if(wyl > 0){
-      sv.wyl = (parseFloat(sv.wyl)||0) + wyl;
-      storesToReset['West Wyalong'] = true;
-    }
-
-    // Save to snapshot
-    snap.sentValues[barcode] = {fbs: fbs, bl: bl, wyl: wyl, whs: 0};
-  });
-
-  // Reset dispatch statuses so cards appear on dispatch sheet
-  Object.keys(storesToReset).forEach(function(store){
-    if(storesToReset[store]){
-      poOrder().dispatchStatuses[store] = 'draft';
-    }
-  });
-
-  // Save to allocationHistory
-  if(!poOrder().allocationHistory) poOrder().allocationHistory = [];
-  poOrder().allocationHistory.unshift(snap);
-  if(poOrder().allocationHistory.length > 50) poOrder().allocationHistory = poOrder().allocationHistory.slice(0,50);
-
-  // Reset allocation inputs
-  whsAllocVals = {};
-  saveToCloud();
-  setBuyerMode('orders');
-  renderDispatch();
-  showToast('WHS Allocation finalised — quantities added to dispatch sheets');
-}
 
 
 function printBuyerDashboard(){
