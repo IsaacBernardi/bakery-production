@@ -929,6 +929,7 @@ function launchProduce(role, store) {
   document.getElementById('appShell').style.display = 'flex';
   showPanel('produce');
   if (typeof poInit === 'function') poInit(role, store);
+  if (role === 'buyer') setTimeout(function(){ showTab('po-tb'); }, 100);
 }
 
 function showPanel(panel) {
