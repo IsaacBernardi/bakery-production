@@ -3440,7 +3440,15 @@ function finaliseDispatch(store){
     sentValues: {},
     categories: JSON.parse(JSON.stringify(po_data.categories))
   };
-  allActive().forEach(i=>{ if(getSent(i.barcode,key)>0) snap.sentValues[i.barcode]=JSON.parse(JSON.stringify(poOrder().sentValues[i.barcode]||{})); });
+  allActive().forEach(i=>{
+    const qty = getSent(i.barcode,key);
+    if(qty>0){
+      // Only save this store's qty — zero others to avoid double-counting in Weekly Export
+      var sv = {fbs:0, bl:0, wyl:0, whs:0};
+      sv[key] = qty;
+      snap.sentValues[i.barcode] = sv;
+    }
+  });
   if(!poOrder().dispatchHistory) poOrder().dispatchHistory=[];
   poOrder().dispatchHistory.unshift(snap);
   if(poOrder().dispatchHistory.length>50) poOrder().dispatchHistory=poOrder().dispatchHistory.slice(0,50);
@@ -3492,8 +3500,9 @@ function finaliseWHS(){
     categories: JSON.parse(JSON.stringify(po_data.categories))
   };
   allActive().forEach(i=>{
-    if(getSent(i.barcode,'whs')>0){
-      snap.sentValues[i.barcode] = JSON.parse(JSON.stringify(poOrder().sentValues[i.barcode]||{}));
+    const qty = getSent(i.barcode,'whs');
+    if(qty>0){
+      snap.sentValues[i.barcode] = {fbs:0, bl:0, wyl:0, whs:qty};
     }
   });
   if(!poOrder().dispatchHistory) poOrder().dispatchHistory=[];
@@ -3568,7 +3577,14 @@ function printDispatch(store){
       sentValues: {},
       categories: JSON.parse(JSON.stringify(po_data.categories))
     };
-    allActive().forEach(i=>{ if(getSent(i.barcode,key)>0) snap.sentValues[i.barcode]=JSON.parse(JSON.stringify(poOrder().sentValues[i.barcode]||{})); });
+    allActive().forEach(i=>{
+      const qty = getSent(i.barcode,key);
+      if(qty>0){
+        var sv = {fbs:0, bl:0, wyl:0, whs:0};
+        sv[key] = qty;
+        snap.sentValues[i.barcode] = sv;
+      }
+    });
     if(!poOrder().dispatchHistory) poOrder().dispatchHistory=[];
     poOrder().dispatchHistory.unshift(snap);
     if(poOrder().dispatchHistory.length>50) poOrder().dispatchHistory=poOrder().dispatchHistory.slice(0,50);
