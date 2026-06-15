@@ -2696,7 +2696,7 @@ function showTab(id) {
   if (tabs[idx[rid] !== undefined ? idx[rid] : 0]) tabs[idx[rid] !== undefined ? idx[rid] : 0].classList.add('active');
   if(rid==='po-tb') renderBuyer(); if(rid==='po-th') renderDispatchHistory(); if(rid==='po-ts-summary') renderOrderSummary();
   if(rid==='po-tp') renderProductMaster();
-  if(rid==='po-td') renderDispatch();
+  if(rid==='po-td'){ if(typeof applyWhsAlloc==='function') applyWhsAlloc(); renderDispatch(); }
 }
 
 // ═══════════════════════════════════════════
@@ -2994,6 +2994,62 @@ function clearWhsAlloc(){
   whsAllocVals = {};
   renderWhsAlloc();
   showToast('WHS allocations cleared');
+}
+function applyWhsAlloc(){
+  if(!po_data || !poOrder()) return;
+  var hasAny = Object.keys(whsAllocVals).some(function(b){
+    var a = whsAllocVals[b];
+    return (parseFloat(a.fbs)||0)+(parseFloat(a.bl)||0)+(parseFloat(a.wyl)||0) > 0;
+  });
+  if(!hasAny) return;
+
+  var snap = {
+    store: 'WHS-ALLOC',
+    savedAt: new Date().toISOString(),
+    label: 'WHS Allocation — '+new Date().toLocaleString('en-AU',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}),
+    dispatchStatus: 'allocation',
+    type: 'allocation',
+    storeEntries: {},
+    sentValues: {},
+    categories: JSON.parse(JSON.stringify(po_data.categories))
+  };
+
+  var storesToReset = {Forbes:false, Blayney:false, 'West Wyalong':false};
+
+  Object.keys(whsAllocVals).forEach(function(barcode){
+    var alloc = whsAllocVals[barcode];
+    var fbs = parseFloat(alloc.fbs)||0;
+    var bl  = parseFloat(alloc.bl)||0;
+    var wyl = parseFloat(alloc.wyl)||0;
+    if(!fbs && !bl && !wyl) return;
+    // Save to snapshot only — do NOT touch sentValues to avoid double-up on Orders tab
+    snap.sentValues[barcode] = {fbs:fbs, bl:bl, wyl:wyl, whs:0};
+    if(fbs>0) storesToReset['Forbes'] = true;
+    if(bl>0)  storesToReset['Blayney'] = true;
+    if(wyl>0) storesToReset['West Wyalong'] = true;
+  });
+
+  // Reset dispatch statuses so store cards appear on dispatch sheet
+  Object.keys(storesToReset).forEach(function(store){
+    if(storesToReset[store]) poOrder().dispatchStatuses[store] = 'draft';
+  });
+
+  // Save to allocationHistory
+  if(!poOrder().allocationHistory) poOrder().allocationHistory = [];
+  poOrder().allocationHistory.unshift(snap);
+  if(poOrder().allocationHistory.length > 50) poOrder().allocationHistory = poOrder().allocationHistory.slice(0,50);
+
+  whsAllocVals = {};
+  saveToCloud();
+}
+function getWhsAllocForStore(barcode, key){
+  if(!po_data || !poOrder()) return 0;
+  var total = 0;
+  (poOrder().allocationHistory||[]).forEach(function(snap){
+    var sv = snap.sentValues && snap.sentValues[barcode];
+    if(sv) total += parseFloat(sv[key])||0;
+  });
+  return total || 0;
 }
 
 
@@ -3429,7 +3485,7 @@ function renderDispatch(){
     const key = PO_STORE_KEYS[store];
     const dStatus = poOrder().dispatchStatuses[store];
     const isFinalised = dStatus==='finalised';
-    const rows = allActive().filter(i=>getSent(i.barcode,key)>0);
+    const rows = allActive().filter(i=>getSent(i.barcode,key)>0 || getWhsAllocForStore(i.barcode,key)>0);
     const hasEntries = rows.length > 0;
 
     if(po_appRole==='buyer'){
@@ -3449,9 +3505,18 @@ function renderDispatch(){
           </div>
         </div>
         <div class="table-wrap" style="border:none"><table><thead><tr>
-          <th>Barcode</th><th>Product</th><th>Qty Sent</th><th>Pack</th>
+          <th>Barcode</th><th>Product</th><th>Qty Sent</th><th>WHS Sent</th><th>Pack</th>
         </tr></thead><tbody>`;
-      rows.forEach(i=>{ html+=`<tr><td class="text-slate">${esc(i.barcode)}</td><td style="font-weight:500">${esc(i.desc)}</td><td>${getSent(i.barcode,key)}</td><td>${esc(i.pack)}</td></tr>`; });
+      rows.forEach(i=>{
+        const whsAlloc = getWhsAllocForStore(i.barcode, key);
+        html+=`<tr>
+          <td class="text-slate">${esc(i.barcode)}</td>
+          <td style="font-weight:500">${esc(i.desc)}</td>
+          <td style="font-weight:600">${getSent(i.barcode,key)||'—'}</td>
+          <td style="color:#6366f1;font-weight:600">${whsAlloc||'—'}</td>
+          <td>${esc(i.pack)}</td>
+        </tr>`;
+      });
       html+=`</tbody></table></div></div>`;
 
     } else {
