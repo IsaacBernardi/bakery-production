@@ -742,6 +742,10 @@ tbody tr:hover{background:var(--s50)}
           <div id="po-seTable"></div>
         </div>
         <div id="po-tb" class="tab-content card-body" style="padding-top:0"><div id="po-order-tabs-tb"></div>
+          <div id="po-buyer-mode-bar" style="display:none;gap:6px;margin-bottom:10px;padding-top:4px">
+            <button class="pill active" id="po-bm-orders" onclick="setBuyerMode('orders')">Orders</button>
+            <button class="pill" id="po-bm-alloc" onclick="setBuyerMode('alloc')">WHS Allocation</button>
+          </div>
           <div class="grid4 mb16">
             <div class="stat-box"><label>Product Total</label><div class="stat-value" id="po-sPT">$0.00</div></div>
             <div class="stat-box"><label>Market Cost ($)</label><input type="number" id="po-mktTotal" value="12" style="width:100%" oninput="recalc()"></div>
@@ -871,6 +875,8 @@ tbody tr:hover{background:var(--s50)}
 
 <script>
 var BUYER_PIN = '1234';
+var po_buyerMode = 'orders'; // 'orders' | 'alloc'
+var whsAllocVals = {}; // {barcode: {fbs: qty, bl: qty, wyl: qty}}
 
 function goTo(id) {
   document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
@@ -2288,6 +2294,10 @@ function renderOrderSummary(){
     (ord.dispatchHistory||[]).forEach(function(snap){
       allSnaps.push(Object.assign({}, snap, {_orderNum: orderNum, _week: weekStart(snap.savedAt)}));
     });
+    // Include WHS allocation history
+    (ord.allocationHistory||[]).forEach(function(snap){
+      allSnaps.push(Object.assign({}, snap, {_orderNum: orderNum, _week: weekStart(snap.savedAt)}));
+    });
   });
 
   if(!allSnaps.length){
@@ -2518,12 +2528,16 @@ function exportTransferQty(){
     return mon.toISOString().slice(0,10);
   }
 
-  // Collect snaps for selected week
+  // Collect snaps for selected week — dispatch history AND allocation history
   var allSnaps = [];
   [1,2,3].forEach(function(orderNum){
     var ord = po_data.orders && po_data.orders[orderNum];
     if(!ord) return;
     (ord.dispatchHistory||[]).forEach(function(snap){
+      if(weekStart(snap.savedAt) === week) allSnaps.push(snap);
+    });
+    // Include WHS allocation history in transfer qty
+    (ord.allocationHistory||[]).forEach(function(snap){
       if(weekStart(snap.savedAt) === week) allSnaps.push(snap);
     });
   });
@@ -2540,9 +2554,13 @@ function exportTransferQty(){
       if(!sv) return;
       var item = catItems[barcode] || {};
       var packQty = parseFloat((item.pack||'1').split(' ')[0]) || 1;
-      var fbs = (parseFloat(sv.fbs)||0) * packQty;
-      var bl  = (parseFloat(sv.bl)||0)  * packQty;
-      var wyl = (parseFloat(sv.wyl)||0) * packQty;
+      // For dispatch snaps: only use the qty for the snap's store to avoid double-counting
+      // For allocation snaps (type='allocation'): use all stores' qtys
+      var isAlloc = snap.type === 'allocation';
+      var snapKey = PO_STORE_KEYS[snap.store]; // e.g. 'fbs' for Forbes
+      var fbs = (isAlloc || snapKey==='fbs') ? (parseFloat(sv.fbs)||0) * packQty : 0;
+      var bl  = (isAlloc || snapKey==='bl')  ? (parseFloat(sv.bl) ||0) * packQty : 0;
+      var wyl = (isAlloc || snapKey==='wyl') ? (parseFloat(sv.wyl)||0) * packQty : 0;
       if(!fbs && !bl && !wyl) return;
       if(!itemMap[barcode]){
         itemMap[barcode] = {
@@ -2835,6 +2853,20 @@ function matchFilter(item){
 }
 function renderBuyer(){
   if(!po_data || !poOrder()) return;
+  // Show mode bar
+  var modeBar = document.getElementById('po-buyer-mode-bar');
+  if(modeBar) modeBar.style.display='flex';
+  // Restore original thead if returning from alloc mode
+  var tbl = document.querySelector('#panel-produce .po-buyer-table');
+  if(tbl){
+    var thead = tbl.querySelector('thead');
+    if(thead && thead.dataset.originalHtml){
+      thead.innerHTML = thead.dataset.originalHtml;
+      delete thead.dataset.originalHtml;
+    }
+  }
+  // Delegate to allocation view if needed
+  if(po_buyerMode === 'alloc'){ renderWhsAlloc(); return; }
   recalc();
   let html='';
   sortedCats().forEach(cat=>{
@@ -2873,6 +2905,171 @@ function renderBuyer(){
   });
   var _bt=document.getElementById('po-bTbody');if(_bt)_bt.innerHTML=html;
 }
+function setBuyerMode(mode){
+  po_buyerMode = mode;
+  var bar = document.getElementById('po-buyer-mode-bar');
+  var ordBtn = document.getElementById('po-bm-orders');
+  var alcBtn = document.getElementById('po-bm-alloc');
+  if(ordBtn) ordBtn.className = 'pill' + (mode==='orders'?' active':'');
+  if(alcBtn) alcBtn.className = 'pill' + (mode==='alloc'?' active':'');
+  // Hide alloc btn area when returning to orders
+  var btnArea = document.getElementById('po-alloc-btn-area');
+  if(btnArea && mode !== 'alloc') btnArea.style.display = 'none';
+  renderBuyer();
+}
+function renderWhsAlloc(){
+  if(!po_data || !poOrder()) return;
+  var el = document.getElementById('po-bTbody');
+  if(!el) return;
+
+  recalc();
+
+  var rows = '';
+  po_data.categories.forEach(function(cat){
+    var items = cat.items.filter(function(i){ return i.active; });
+    if(!items.length) return;
+    rows += '<tr><td colspan="7" style="padding:5px 8px;background:var(--s100);font-weight:700;font-size:12px">' + esc(cat.name) + '</td></tr>';
+    items.forEach(function(item){
+      var a = whsAllocVals[item.barcode] || {};
+      var fv = parseFloat(a.fbs)||0;
+      var bv = parseFloat(a.bl)||0;
+      var yv = parseFloat(a.wyl)||0;
+      var tot = fv+bv+yv;
+      var bc = item.barcode.replace(/'/g,"\\'");
+      rows += '<tr>';
+      rows += '<td style="padding:6px 8px;font-size:12px;color:var(--s500)">' + esc(item.barcode) + '</td>';
+      rows += '<td style="padding:6px 8px;font-size:12px;font-weight:500">' + esc(item.desc) + '</td>';
+      rows += '<td style="padding:6px 8px;font-size:12px">' + esc(item.pack) + '</td>';
+      rows += '<td style="padding:6px 4px"><input type="number" min="0" style="width:65px" placeholder="0" value="' + (fv||'') + '" oninput="setAlloc(\'' + bc + '\',\'fbs\',this.value)"></td>';
+      rows += '<td style="padding:6px 4px"><input type="number" min="0" style="width:65px" placeholder="0" value="' + (bv||'') + '" oninput="setAlloc(\'' + bc + '\',\'bl\',this.value)"></td>';
+      rows += '<td style="padding:6px 4px"><input type="number" min="0" style="width:65px" placeholder="0" value="' + (yv||'') + '" oninput="setAlloc(\'' + bc + '\',\'wyl\',this.value)"></td>';
+      rows += '<td id="alloc-total-' + esc(item.barcode) + '" style="padding:6px 8px;font-weight:700;font-size:12px">' + (tot||'') + '</td>';
+      rows += '</tr>';
+    });
+  });
+
+  // Update table header — save original first for restore
+  var tbl = document.querySelector('#panel-produce .po-buyer-table');
+  if(tbl){
+    var thead = tbl.querySelector('thead');
+    if(thead){
+      if(!thead.dataset.originalHtml) thead.dataset.originalHtml = thead.innerHTML;
+      thead.innerHTML = '<tr><th style="padding:8px 8px;font-size:11px">Barcode</th><th style="padding:8px 8px;font-size:11px">Product</th><th style="padding:8px 8px;font-size:11px">Pack</th><th style="padding:8px 8px;font-size:11px">Forbes Alloc</th><th style="padding:8px 8px;font-size:11px">Blayney Alloc</th><th style="padding:8px 8px;font-size:11px">WW Alloc</th><th style="padding:8px 8px;font-size:11px">Total</th></tr>';
+    }
+  }
+  el.innerHTML = rows;
+
+  // Show finalise button area
+  var btnArea = document.getElementById('po-alloc-btn-area');
+  if(!btnArea){
+    btnArea = document.createElement('div');
+    btnArea.id = 'po-alloc-btn-area';
+    btnArea.style.cssText = 'padding:12px 0;display:flex;gap:10px;align-items:center';
+    btnArea.innerHTML = '<button class="btn btn-dark" onclick="finaliseWhsAlloc()">&#x2713; Finalise WHS Allocation</button><button class="btn btn-outline" onclick="clearWhsAlloc()">Clear</button><span id="po-alloc-status" style="font-size:12px;color:var(--s500)"></span>';
+    var tableWrap = document.querySelector('#po-tb .table-wrap');
+    if(tableWrap) tableWrap.parentNode.insertBefore(btnArea, tableWrap);
+  }
+  btnArea.style.display = 'flex';
+}
+
+function setAlloc(barcode, key, val){
+  if(!whsAllocVals[barcode]) whsAllocVals[barcode] = {fbs:0, bl:0, wyl:0};
+  whsAllocVals[barcode][key] = parseFloat(val)||0;
+  var a = whsAllocVals[barcode];
+  var tot = (parseFloat(a.fbs)||0)+(parseFloat(a.bl)||0)+(parseFloat(a.wyl)||0);
+  var el = document.getElementById('alloc-total-' + barcode);
+  if(el) el.textContent = tot || '';
+}
+
+function updateAllocTotal(barcode){
+  var alloc = whsAllocVals[barcode] || {fbs:0,bl:0,wyl:0};
+  var total = (parseFloat(alloc.fbs)||0) + (parseFloat(alloc.bl)||0) + (parseFloat(alloc.wyl)||0);
+  var el = document.getElementById('alloc-total-' + barcode);
+  if(el) el.textContent = total || '';
+}
+
+function clearWhsAlloc(){
+  whsAllocVals = {};
+  renderWhsAlloc();
+  showToast('WHS allocations cleared');
+}
+
+function finaliseWhsAlloc(){
+  if(!po_data || !poOrder()) return;
+
+  // Check any entries exist
+  var hasAny = Object.keys(whsAllocVals).some(function(b){
+    var a = whsAllocVals[b];
+    return (parseFloat(a.fbs)||0) + (parseFloat(a.bl)||0) + (parseFloat(a.wyl)||0) > 0;
+  });
+  if(!hasAny){ showToast('No allocation quantities entered', 3000); return; }
+  if(!confirm('Finalise WHS Allocation? This will add quantities to each store\'s dispatch sheet.')) return;
+
+  // Track which stores received allocations
+  var storesToReset = {Forbes: false, Blayney: false, 'West Wyalong': false};
+
+  // Build snapshot for allocationHistory / Export Transfer Qty
+  var snap = {
+    store: 'WHS-ALLOC',
+    savedAt: new Date().toISOString(),
+    label: 'WHS Allocation — ' + new Date().toLocaleString('en-AU',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}),
+    dispatchStatus: 'allocation',
+    type: 'allocation',
+    storeEntries: {},
+    sentValues: {},
+    categories: JSON.parse(JSON.stringify(po_data.categories))
+  };
+
+  Object.keys(whsAllocVals).forEach(function(barcode){
+    var alloc = whsAllocVals[barcode];
+    var fbs = parseFloat(alloc.fbs)||0;
+    var bl  = parseFloat(alloc.bl)||0;
+    var wyl = parseFloat(alloc.wyl)||0;
+    if(!fbs && !bl && !wyl) return;
+
+    // Ensure sentValues entry exists
+    if(!poOrder().sentValues[barcode]) poOrder().sentValues[barcode] = {fbs:0, bl:0, wyl:0, whs:0};
+    var sv = poOrder().sentValues[barcode];
+
+    // Add allocation quantities
+    if(fbs > 0){
+      sv.fbs = (parseFloat(sv.fbs)||0) + fbs;
+      storesToReset['Forbes'] = true;
+    }
+    if(bl > 0){
+      sv.bl = (parseFloat(sv.bl)||0) + bl;
+      storesToReset['Blayney'] = true;
+    }
+    if(wyl > 0){
+      sv.wyl = (parseFloat(sv.wyl)||0) + wyl;
+      storesToReset['West Wyalong'] = true;
+    }
+
+    // Save to snapshot
+    snap.sentValues[barcode] = {fbs: fbs, bl: bl, wyl: wyl, whs: 0};
+  });
+
+  // Reset dispatch statuses so cards appear on dispatch sheet
+  Object.keys(storesToReset).forEach(function(store){
+    if(storesToReset[store]){
+      poOrder().dispatchStatuses[store] = 'draft';
+    }
+  });
+
+  // Save to allocationHistory
+  if(!poOrder().allocationHistory) poOrder().allocationHistory = [];
+  poOrder().allocationHistory.unshift(snap);
+  if(poOrder().allocationHistory.length > 50) poOrder().allocationHistory = poOrder().allocationHistory.slice(0,50);
+
+  // Reset allocation inputs
+  whsAllocVals = {};
+  saveToCloud();
+  setBuyerMode('orders');
+  renderDispatch();
+  showToast('WHS Allocation finalised — quantities added to dispatch sheets');
+}
+
+
 function printBuyerDashboard(){
   if(!po_data) return;
   const items = allActive().filter(i => matchFilter(i));
