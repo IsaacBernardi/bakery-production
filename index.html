@@ -240,6 +240,12 @@ td.bake.zero{color:#bbb;font-weight:400}
 /* ── Print ── */
 #printArea{display:none}
 .hp-hidden{display:none!important}
+.po-buyer-table thead th{background:#1e293b;color:#fff;padding:8px 6px;font-size:11px;font-weight:700;white-space:nowrap;border-bottom:2px solid #334155;position:sticky;top:0;z-index:1}
+.po-buyer-table thead th:first-child{border-radius:4px 0 0 0}
+.po-buyer-table thead th:last-child{border-radius:0 4px 0 0}
+.po-buyer-table{border-collapse:collapse;font-size:12px}
+.po-buyer-table td{padding:6px 6px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+.po-buyer-table tr:hover td{background:#f8fafc}
 @media print{
   /* Hide everything except printArea */
   body > *{display:none!important}
@@ -738,8 +744,8 @@ tbody tr:hover{background:var(--s50)}
         <div id="po-tb" class="tab-content card-body" style="padding-top:0"><div id="po-order-tabs-tb"></div>
           <div class="grid4 mb16">
             <div class="stat-box"><label>Product Total</label><div class="stat-value" id="po-sPT">$0.00</div></div>
-            <div class="stat-box"><label>Market Cost ($)</label><input type="number" id="po-mktTotal" value="12" style="width:100%" oninput="recalcDashboard()"></div>
-            <div class="stat-box"><label>Transport ($)</label><input type="number" id="po-trTotal" value="8" style="width:100%" oninput="recalcDashboard()"></div>
+            <div class="stat-box"><label>Market Cost ($)</label><input type="number" id="po-mktTotal" value="12" style="width:100%" oninput="recalc()"></div>
+            <div class="stat-box"><label>Transport ($)</label><input type="number" id="po-trTotal" value="8" style="width:100%" oninput="recalc()"></div>
             <div class="stat-box"><label>Oncost %</label><div class="stat-value" id="po-sOnc">0.00%</div></div>
           </div>
           <div class="flex gap8 flex-wrap mb12">
@@ -757,12 +763,13 @@ tbody tr:hover{background:var(--s50)}
             <button class="pill" onclick="setFilter('dispatch')">Dispatch Lines</button>
             <button class="pill" onclick="setFilter('low_gp')">Low GP</button>
             <button class="pill" onclick="setFilter('high_gp')">High GP</button>
+            <button class="btn btn-outline btn-sm po-buyer-only hidden" onclick="printBuyerDashboard()" style="margin-left:auto">&#x1F5A8; Print</button>
           </div>
           <div class="table-wrap">
-            <table><thead><tr>
+            <table class="po-buyer-table" style="width:100%"><thead><tr>
               <th>Barcode</th><th>Product</th><th>Purch UOM</th><th>Requests</th>
               <th>FBS BOH</th><th>FBS Sent</th><th>BL BOH</th><th>BL Sent</th>
-              <th>WYL BOH</th><th>WYL Sent</th>
+              <th>WYL BOH</th><th>WYL Sent</th><th>WHS Sent</th>
               <th>CTN Cost</th><th>Unit Net</th><th>Sell</th><th>GP%</th>
               <th>New Cost</th><th>New Sell</th><th>Sell UOM</th><th>New GP%</th>
             </tr></thead><tbody id="po-bTbody"></tbody></table>
@@ -794,7 +801,6 @@ tbody tr:hover{background:var(--s50)}
 </div>
 
 
-</div>
 <div class="u-panel" id="panel-hourly">
   <div id="hp-appContent" class="hp-hidden" style="min-height:calc(100vh - 52px);display:flex;flex-direction:column">
     <!-- Header -->
@@ -953,13 +959,12 @@ window.addEventListener('DOMContentLoaded', function() {
   var savedDept = localStorage.getItem('bps_dept');
   var hpStore = localStorage.getItem('hp_store');
   var hpDept  = localStorage.getItem('hp_dept');
-  if (saved && VALID.indexOf(saved) >= 0 && savedDept) {
-    launchBakeryDept(saved, savedDept);
-  } else if (saved && VALID.indexOf(saved) >= 0) {
-    launchBakery(saved);
-  } else if (hpStore && hpDept) {
-    hp_launch(hpStore, hpDept);
-  }
+  // Always start on home screen — clear any saved session
+  localStorage.removeItem('bps_store');
+  localStorage.removeItem('bps_dept');
+  localStorage.removeItem('hp_store');
+  localStorage.removeItem('hp_dept');
+  goTo('s-choose');
   if (typeof buildDayBar === 'function') buildDayBar();
   var hm = document.getElementById('historyModal');
   if (hm) hm.addEventListener('click', function(e){ if(e.target===this) closeHistory(); });
@@ -1995,7 +2000,7 @@ const PO_CURRENT_BLOB = 'current.json';
 // STATE
 // ═══════════════════════════════════════════
 const PO_STORES = ['Forbes','Blayney','West Wyalong'];
-const PO_STORE_KEYS = {Forbes:'fbs',Blayney:'bl','West Wyalong':'wyl'};
+const PO_STORE_KEYS = {Forbes:'fbs',Blayney:'bl','West Wyalong':'wyl',WHS:'whs'};
 const PO_STORE_SHORT = {Forbes:'FBS',Blayney:'BL','West Wyalong':'WYL'};
 const PO_ORDERS = [1,2,3];
 let po_activeOrder = 1;
@@ -2327,8 +2332,13 @@ function renderOrderSummary(){
     Object.keys(snap.sentValues||{}).forEach(function(barcode){
       var sv = snap.sentValues[barcode];
       if(!sv) return;
-      var qty = (parseFloat(sv.fbs)||0)+(parseFloat(sv.bl)||0)+(parseFloat(sv.wyl)||0);
-      if(!qty) return;
+      var fbs = parseFloat(sv.fbs)||0;
+      var bl  = parseFloat(sv.bl)||0;
+      var wyl = parseFloat(sv.wyl)||0;
+      var whs = parseFloat(sv.whs)||0;
+      if(isNaN(whs)) whs=0;
+      var qty = fbs + bl + wyl;
+      if(!qty && !whs) return;
       var item = catItems[barcode] || {};
       var packQty = parseFloat((item.pack||'1').split(' ')[0]) || 1;
       var ctn = parseFloat(item.ctn) || 0;
@@ -2344,18 +2354,18 @@ function renderOrderSummary(){
           totalCost: 0,
           forbesBaseQty: 0,
           wwyalongBaseQty: 0,
-          blayneyBaseQty: 0
+          blayneyBaseQty: 0,
+          whsBaseQty: 0
         };
       }
-      var fbs = parseFloat(sv.fbs)||0;
-      var bl  = parseFloat(sv.bl)||0;
-      var wyl = parseFloat(sv.wyl)||0;
-      itemMap[barcode].totalQty += qty;
-      itemMap[barcode].totalBaseQty    += qty * packQty;
-      itemMap[barcode].forbesBaseQty   += fbs * packQty;
-      itemMap[barcode].wwyalongBaseQty += wyl * packQty;
-      itemMap[barcode].blayneyBaseQty  += bl  * packQty;
-      itemMap[barcode].totalCost += qty * ctn;
+      var safePackQty = isNaN(packQty) ? 1 : packQty;
+      itemMap[barcode].totalQty += qty + whs;
+      itemMap[barcode].totalBaseQty    += (qty + whs) * safePackQty;
+      itemMap[barcode].forbesBaseQty   += fbs * safePackQty;
+      itemMap[barcode].wwyalongBaseQty += wyl * safePackQty;
+      itemMap[barcode].blayneyBaseQty  += bl  * safePackQty;
+      itemMap[barcode].whsBaseQty      += whs * safePackQty;
+      itemMap[barcode].totalCost += (qty + whs) * ctn;
     });
   });
 
@@ -2381,7 +2391,7 @@ function renderOrderSummary(){
 
   html += '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">';
   html += '<thead><tr style="background:var(--s100)">';
-  ['Type','Item No','Barcode','Description','Location','Forbes Qty','WW Qty','Blayney Qty','Total Qty','UOM','Unit Cost'].forEach(function(h){
+  ['Type','Item No','Barcode','Description','Location','Forbes Qty','WW Qty','Blayney Qty','WHS Qty','Total Qty','UOM','Unit Cost'].forEach(function(h){
     html += '<th style="padding:10px 10px;text-align:left;font-weight:700;border-bottom:2px solid var(--s200);white-space:nowrap">'+h+'</th>';
   });
   html += '</tr></thead><tbody>';
@@ -2398,6 +2408,7 @@ function renderOrderSummary(){
     html += '<td style="padding:8px 10px;text-align:right">'+item.forbesBaseQty.toFixed(2)+'</td>';
     html += '<td style="padding:8px 10px;text-align:right">'+item.wwyalongBaseQty.toFixed(2)+'</td>';
     html += '<td style="padding:8px 10px;text-align:right">'+item.blayneyBaseQty.toFixed(2)+'</td>';
+    html += '<td style="padding:8px 10px;text-align:right">'+(isNaN(item.whsBaseQty)?'0.00':item.whsBaseQty.toFixed(2))+'</td>';
     html += '<td style="padding:8px 10px;text-align:right;font-weight:700">'+item.totalBaseQty.toFixed(2)+'</td>';
     html += '<td style="padding:8px 10px">PCS</td>';
     html += '<td style="padding:8px 10px;text-align:right;font-weight:700;color:var(--s900)">$'+avgUnitCost.toFixed(4)+'</td>';
@@ -2453,16 +2464,21 @@ function exportOrderSummary(){
     Object.keys(snap.sentValues||{}).forEach(function(barcode){
       var sv = snap.sentValues[barcode];
       if(!sv) return;
-      var qty = (parseFloat(sv.fbs)||0)+(parseFloat(sv.bl)||0)+(parseFloat(sv.wyl)||0);
-      if(!qty) return;
+      var fbs = parseFloat(sv.fbs)||0;
+      var bl  = parseFloat(sv.bl)||0;
+      var wyl = parseFloat(sv.wyl)||0;
+      var whs = parseFloat(sv.whs)||0;
+      if(isNaN(whs)) whs=0;
+      var qty = fbs + bl + wyl;
+      if(!qty && !whs) return;
       var item = catItems[barcode] || {};
       var packQty = parseFloat((item.pack||'1').split(' ')[0]) || 1;
       var ctn = parseFloat(item.ctn) || 0;
       if(!itemMap[barcode]){
         itemMap[barcode] = {itemNo:item.itemNo || liveItemNo[barcode] || '', barcode:barcode, desc:item.desc||barcode, packQty:packQty, totalBaseQty:0, totalCost:0};
       }
-      itemMap[barcode].totalBaseQty += qty * packQty;
-      itemMap[barcode].totalCost += qty * ctn;
+      itemMap[barcode].totalBaseQty += (qty + whs) * packQty;
+      itemMap[barcode].totalCost += (qty + whs) * ctn;
     });
   });
 
@@ -2570,8 +2586,8 @@ function exportTransferQty(){
 async function saveToCloud() {
   setCloud('busy','Saving...');
   // sync UI inputs back
-  po_data.marketTotal = parseFloat(document.getElementById('marketTotal')?.value)||po_data.marketTotal||12;
-  po_data.transportTotal = parseFloat(document.getElementById('transportTotal')?.value)||po_data.transportTotal||8;
+  po_data.marketTotal = parseFloat(document.getElementById('po-mktTotal')?.value)||po_data.marketTotal||12;
+  po_data.transportTotal = parseFloat(document.getElementById('po-trTotal')?.value)||po_data.transportTotal||8;
   try {
     const res = await fetch(`${PO_BLOB_BASE}/${PO_CURRENT_BLOB}?${PO_SAS}`, {
       method:'PUT',
@@ -2617,8 +2633,8 @@ async function startApp() {
   document.querySelectorAll('.buyer-only').forEach(el => el.classList.toggle('hidden', po_appRole!=='buyer'));
   await loadFromCloud();
   // sync market/transport to UI
-  if (document.getElementById('marketTotal')) var _g_marketTotal=document.getElementById('marketTotal');if(_g_marketTotal)_g_marketTotal.value=po_data.marketTotal||12;
-  if (document.getElementById('transportTotal')) var _g_transportTotal=document.getElementById('transportTotal');if(_g_transportTotal)_g_transportTotal.value=po_data.transportTotal||8;
+  if (document.getElementById('po-mktTotal')) var _g_marketTotal=document.getElementById('po-mktTotal');if(_g_marketTotal)_g_marketTotal.value=po_data.marketTotal||12;
+  if (document.getElementById('po-trTotal')) var _g_transportTotal=document.getElementById('po-trTotal');if(_g_transportTotal)_g_transportTotal.value=po_data.transportTotal||8;
   showTab('tab-store');
   renderStoreEntry();
 }
@@ -2629,8 +2645,8 @@ async function startApp() {
 // ═══════════════════════════════════════════
 function packSize(pack) { const v=parseFloat(String(pack).split(' ')[0]); return isFinite(v)&&v>0?v:1; }
 function oncostFrac() {
-  const market=parseFloat(document.getElementById('marketTotal')?.value)||po_data.marketTotal||0;
-  const transport=parseFloat(document.getElementById('transportTotal')?.value)||po_data.transportTotal||0;
+  const market=parseFloat(document.getElementById('po-mktTotal')?.value)||po_data.marketTotal||0;
+  const transport=parseFloat(document.getElementById('po-trTotal')?.value)||po_data.transportTotal||0;
   const total=allActive().reduce((s,i)=>s+i.ctn,0);
   return total>0?(market+transport)/total:0;
 }
@@ -2770,13 +2786,13 @@ function lockStore(){ const s=effectiveStore(); poOrder().storeStatuses[s]='lock
 function recalc(){
   if(!po_data)return;
   const onc=oncostFrac();
-  const market=parseFloat(document.getElementById('marketTotal')?.value)||po_data.marketTotal||0;
-  const transport=parseFloat(document.getElementById('transportTotal')?.value)||po_data.transportTotal||0;
+  const market=parseFloat(document.getElementById('po-mktTotal')?.value)||po_data.marketTotal||0;
+  const transport=parseFloat(document.getElementById('po-trTotal')?.value)||po_data.transportTotal||0;
   // Calculate est. net cost = sum of (sent qty × ctn cost × (1+onc)) across all items
   const items=allActive();
   let recalcNetCost=0;
   items.forEach(i=>{
-    const ts=getSent(i.barcode,'fbs')+getSent(i.barcode,'bl')+getSent(i.barcode,'wyl');
+    const ts=getSent(i.barcode,'fbs')+getSent(i.barcode,'bl')+getSent(i.barcode,'wyl')+getSent(i.barcode,'whs');
     recalcNetCost+=i.ctn*(1+onc)*ts;
   });
   // Product Total = est. net cost + market cost + transport cost
@@ -2787,7 +2803,7 @@ function recalc(){
   var _sOnc=document.getElementById('po-sOnc');if(_sOnc)_sOnc.textContent=oncPct.toFixed(2)+'%';
   let retail=0,netCost=0;
   items.forEach(i=>{
-    const ts=getSent(i.barcode,'fbs')+getSent(i.barcode,'bl')+getSent(i.barcode,'wyl');
+    const ts=getSent(i.barcode,'fbs')+getSent(i.barcode,'bl')+getSent(i.barcode,'wyl')+getSent(i.barcode,'whs');
     const ps=packSize(i.pack);
     retail+=i.sell*ts*ps;          // sell price per unit × total units
     netCost+=i.ctn*(1+onc)*ts;     // cost per pack × total packs (oncost included)
@@ -2819,7 +2835,7 @@ function matchFilter(item){
 function renderBuyer(){
   if(!po_data || !poOrder()) return;
   recalc();
-  let html='<div style="text-align:right;margin-bottom:8px"><button class="btn btn-outline btn-sm" onclick="printBuyerDashboard()">&#x1F5A8; Print Buyer Dashboard</button></div>';
+  let html='';
   sortedCats().forEach(cat=>{
     const actives=cat.items.filter(i=>i.active&&matchFilter(i));
     const col=collapsedBuyer[cat.name];
@@ -2844,6 +2860,7 @@ function renderBuyer(){
         <td><input type="number" style="width:65px" value="${esc(poOrder().sentValues[item.barcode]?.bl||'')}" onchange="updateSent('${esc(item.barcode)}','bl',this.value)"></td>
         <td>${getBoh('West Wyalong',item.barcode)}</td>
         <td><input type="number" style="width:65px" value="${esc(poOrder().sentValues[item.barcode]?.wyl||'')}" onchange="updateSent('${esc(item.barcode)}','wyl',this.value)"></td>
+        <td><input type="number" style="width:65px" placeholder="0" value="${esc(poOrder().sentValues[item.barcode]?.whs||'')}" onchange="updateSent('${esc(item.barcode)}','whs',this.value)"></td>
         <td>$${item.ctn.toFixed(2)}</td><td>$${un.toFixed(2)}</td>
         <td>$${item.sell.toFixed(2)}</td><td>${gp.toFixed(1)}%</td>
         <td><input type="number" style="width:75px" placeholder="${item.ctn.toFixed(2)}" value="${esc(nc)}" onchange="po_newCostVals['${esc(item.barcode)}']=this.value;renderBuyer()"></td>
@@ -2869,7 +2886,7 @@ function printBuyerDashboard(){
   // Stat summary row
   let retail=0, netCost=0;
   items.forEach(i=>{
-    const ts=getSent(i.barcode,'fbs')+getSent(i.barcode,'bl')+getSent(i.barcode,'wyl');
+    const ts=getSent(i.barcode,'fbs')+getSent(i.barcode,'bl')+getSent(i.barcode,'wyl')+getSent(i.barcode,'whs');
     retail+=i.sell*ts*packSize(i.pack);
     netCost+=i.ctn*(1+onc)*ts;
   });
@@ -2885,24 +2902,24 @@ function printBuyerDashboard(){
   h += `<table style="width:100%;border-collapse:collapse;font-size:9px;table-layout:fixed">`;
   h += `<thead><tr style="background:#f0f0f0">`;
   const cols = [
-    {label:'Barcode',    w:'8%'},
-    {label:'Product',    w:'16%'},
-    {label:'Purch UOM',  w:'6%'},
-    {label:'Requests',   w:'10%'},
-    {label:'FBS BOH',    w:'5%'},
-    {label:'FBS Sent',   w:'5%'},
-    {label:'BL BOH',     w:'5%'},
-    {label:'BL Sent',    w:'5%'},
-    {label:'WYL BOH',    w:'5%'},
-    {label:'WYL Sent',   w:'5%'},
-    {label:'CTN Cost',   w:'6%'},
-    {label:'Unit Net',   w:'6%'},
-    {label:'Sell',       w:'5%'},
-    {label:'GP%',        w:'4%'},
-    {label:'New Cost',   w:'6%'},
-    {label:'New Sell',   w:'5%'},
-    {label:'Sell UOM',   w:'4%'},
-    {label:'New GP%',    w:'4%'},
+    {label:'Barcode',         w:'8%'},
+    {label:'Product',          w:'15%'},
+    {label:'Purch UOM',        w:'5%'},
+    {label:'Store Requests',   w:'9%'},
+    {label:'Forbes BOH',       w:'5%'},
+    {label:'Forbes Sent',      w:'5%'},
+    {label:'Blayney BOH',      w:'4%'},
+    {label:'Blayney Sent',     w:'4%'},
+    {label:'W.Wyalong BOH',    w:'4%'},
+    {label:'W.Wyalong Sent',   w:'4%'},
+    {label:'CTN Cost ($)',     w:'5%'},
+    {label:'Unit Net ($)',     w:'5%'},
+    {label:'Sell Price ($)',   w:'5%'},
+    {label:'GP %',             w:'4%'},
+    {label:'New CTN Cost',     w:'5%'},
+    {label:'New Sell Price',   w:'5%'},
+    {label:'Sell UOM',         w:'4%'},
+    {label:'New GP %',         w:'4%'},
   ];
   cols.forEach(col => {
     h += `<th style="padding:4px 3px;border:0.5px solid #ccc;text-align:left;font-size:8px;width:${col.w};overflow:hidden">${col.label}</th>`;
@@ -3366,6 +3383,31 @@ function renderDispatch(){
     }
   });
 
+  // Buyer: WHS dispatch card (buyer only)
+  if(po_appRole==='buyer'){
+    const whsRows = allActive().filter(i=>getSent(i.barcode,'whs')>0);
+    if(whsRows.length > 0){
+      anyVisible = true;
+      html+=`<div class="card mb16">
+        <div class="card-header">
+          <div class="flex items-center justify-between flex-wrap gap12">
+            <div>
+              <h2>WHS (Warehouse) Dispatch</h2>
+              <p>Warehouse quantities for this cycle</p>
+            </div>
+            <div class="flex gap8 flex-wrap">
+              <button class="btn btn-dark btn-sm" onclick="finaliseWHS()">Finalise</button>
+            </div>
+          </div>
+        </div>
+        <div class="table-wrap" style="border:none"><table><thead><tr>
+          <th>Barcode</th><th>Product</th><th>WHS Qty</th><th>Pack</th>
+        </tr></thead><tbody>`;
+      whsRows.forEach(i=>{ html+=`<tr><td class="text-slate">${esc(i.barcode)}</td><td style="font-weight:500">${esc(i.desc)}</td><td>${getSent(i.barcode,'whs')}</td><td>${esc(i.pack)}</td></tr>`; });
+      html+=`</tbody></table></div></div>`;
+    }
+  }
+
   // Buyer: empty state
   if(po_appRole==='buyer' && !anyVisible){
     html=`<div style="text-align:center;padding:40px;color:var(--s400)">
@@ -3428,7 +3470,47 @@ function finaliseDispatch(store){
   renderDispatch();
   renderBuyer();
   showToast(store+' dispatch finalised — entries cleared');
-  setTimeout(function(){ showTab('po-th'); }, 500);
+}
+function finaliseWHS(){
+  if(!po_data) return;
+
+  // Validate: must have at least one WHS quantity
+  const hasEntries = allActive().some(i => getSent(i.barcode,'whs') > 0);
+  if(!hasEntries){
+    showToast('Cannot finalise — no WHS quantities entered', 4000);
+    return;
+  }
+
+  // Save snapshot to dispatch history
+  const snap = {
+    store: 'WHS',
+    savedAt: new Date().toISOString(),
+    label: 'WHS — ' + new Date().toLocaleString('en-AU',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}),
+    dispatchStatus: 'finalised',
+    storeEntries: {},
+    sentValues: {},
+    categories: JSON.parse(JSON.stringify(po_data.categories))
+  };
+  allActive().forEach(i=>{
+    if(getSent(i.barcode,'whs')>0){
+      snap.sentValues[i.barcode] = JSON.parse(JSON.stringify(poOrder().sentValues[i.barcode]||{}));
+    }
+  });
+  if(!poOrder().dispatchHistory) poOrder().dispatchHistory=[];
+  poOrder().dispatchHistory.unshift(snap);
+  if(poOrder().dispatchHistory.length>50) poOrder().dispatchHistory=poOrder().dispatchHistory.slice(0,50);
+
+  // Clear WHS sent values
+  allActive().forEach(i=>{
+    if(poOrder().sentValues[i.barcode]){
+      poOrder().sentValues[i.barcode].whs='';
+    }
+  });
+
+  saveToCloud();
+  renderDispatch();
+  renderBuyer();
+  showToast('WHS dispatch finalised — entries cleared');
 }
 // [reopenDispatch removed]
 
@@ -3505,7 +3587,6 @@ function printDispatch(store){
     saveToCloud();
     renderDispatch();
     showToast(store+' dispatch printed — archived for next cycle');
-    setTimeout(function(){ showTab('po-th'); }, 500);
   }, 80);
 }
 function toggleEmailed(store){ poOrder().dispatchMeta[store].emailed=!poOrder().dispatchMeta[store].emailed; renderDispatch(); }
