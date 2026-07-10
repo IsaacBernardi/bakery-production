@@ -1179,7 +1179,7 @@ function parseRows(rows){
   const headers=rows[0].map(function(h){return String(h).trim().toLowerCase().replace(/[\s_]/g,'');});
   function fi(h){return headers.findIndex(function(x){return x.includes(h);});}
   const iStore=fi('store'),iDay=fi('day'),iItem=fi('itemno'),iVItem=fi('vendoritem'),
-        iDesc=fi('desc'),iOrder=fi('order'),iGroup=fi('special')<0?fi('erb'):fi('special');
+        iDesc=fi('desc'),iOrder=fi('order'),iGroup=fi('special')<0?fi('erb'):fi('special'),iSales=fi('sales');
   if(iDay<0||iItem<0||iOrder<0){showError('Could not find required columns (DayofWeek, Item No, Order).');return;}
   const raw={};storeName='';
   for(let i=1;i<rows.length;i++){
@@ -1189,8 +1189,9 @@ function parseRows(rows){
     const di=DAY_MAP[(iDay>=0?c[iDay]:'').toLowerCase().substring(0,3)];
     if(di===undefined)continue;
     const key=iItem>=0?c[iItem]:'';if(!key)continue;
-    if(!raw[key])raw[key]={itemNo:key,vendorItem:iVItem>=0?c[iVItem]:'',desc:iDesc>=0?c[iDesc]:'',group:iGroup>=0?c[iGroup]:'',orders:Array(7).fill(0)};
+    if(!raw[key])raw[key]={itemNo:key,vendorItem:iVItem>=0?c[iVItem]:'',desc:iDesc>=0?c[iDesc]:'',group:iGroup>=0?c[iGroup]:'',orders:Array(7).fill(0),dailySales:Array(7).fill('')};
     raw[key].orders[di]=Math.max(0,parseInt(c[iOrder])||0);
+    if(iSales>=0&&c[iSales]) raw[key].dailySales[di]=c[iSales];
   }
   items=Object.values(raw);
   if(!items.length){showError('No valid rows found. Check that DayofWeek values are Mon/Tue/Wed etc.');return;}
@@ -1699,18 +1700,19 @@ function handlePrint(){
   const dateStr=new Date().toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   let h='<div class="ptitle">'+(currentStoreCode?escHtml(currentStoreCode)+' &mdash; ':'')+DAY_LABELS[di]+' Production Sheet';
   h+='<span class="psub">'+dateStr+(boostPct?' &nbsp;|&nbsp; Boost: +'+boostPct+'%':'')+'</span></div>';
-  h+='<table><thead><tr><th class="left">Item No</th><th class="left">Description</th><th>Group</th><th>SOH</th><th>Avg Sales</th><th>Bake/Order</th></tr></thead><tbody>';
+  h+='<table><thead><tr><th class="left">Item No</th><th class="left">Description</th><th>Group</th><th>SOH</th><th>Avg Sales</th><th>Bake/Order</th><th>Daily Sales</th></tr></thead><tbody>';
   const groups=[...new Set(items.map(function(i){return i.group;}))];
   groups.forEach(function(g){
     const ri_map=items.map(function(it,ri){return{it,ri};}).filter(function(x){return x.it.group===g;});
-    if(g)h+='<tr class="p-grp"><td colspan="6">'+escHtml(g)+'</td></tr>';
+    if(g)h+='<tr class="p-grp"><td colspan="7">'+escHtml(g)+'</td></tr>';
     ri_map.forEach(function({it,ri}){
       const sv=soh[ri][di]!==null?soh[ri][di]:'';
       const bake=calcBake(it.orders[di],soh[ri][di],boost);
       const bc=bake<0?'p-neg':bake===0?'p-zero':'p-bake';
       h+='<tr><td class="left" style="font-size:9px">'+escHtml(it.itemNo)+'</td><td class="left">'+escHtml(it.desc)+'</td>';
       h+='<td>'+escHtml(it.group||'—')+'</td><td>'+sv+'</td><td>'+(it.orders[di]||'—')+'</td>';
-      h+='<td>'+(soh[ri][di]!==null?'<span class="'+bc+'">'+bake+'</span>':'')+'</td></tr>';
+      h+='<td>'+(soh[ri][di]!==null?'<span class="'+bc+'">'+bake+'</span>':'')+'</td>';
+      h+='<td>'+(it.dailySales&&it.dailySales[di]!==undefined?escHtml(String(it.dailySales[di])):'')+'</td></tr>';
     });
   });
   h+='</tbody></table>';
@@ -1722,7 +1724,7 @@ function handlePrint(){
     'table{width:100%;border-collapse:collapse;table-layout:fixed}'+
     'thead{display:table-header-group}tbody{display:table-row-group}'+
     'th{font-size:8px;font-weight:700;padding:4px 3px;background:#f0f0f0;text-align:center;border:0.5px solid #ccc;white-space:normal;word-break:break-word;vertical-align:bottom}'+
-    'th.left{text-align:left}th:nth-child(1){width:10%}th:nth-child(2){width:40%}th:nth-child(3){width:14%}th:nth-child(4),th:nth-child(5),th:nth-child(6){width:12%}'+
+    'th.left{text-align:left}th:nth-child(1){width:9%}th:nth-child(2){width:35%}th:nth-child(3){width:12%}th:nth-child(4),th:nth-child(5),th:nth-child(6){width:10%}th:nth-child(7){width:12%}'+
     'td{padding:3px 4px;font-size:10px;border:0.5px solid #ddd;text-align:center;vertical-align:middle}'+
     'td.left{text-align:left;white-space:normal;word-break:break-word}'+
     '.ptitle{font-size:13px;font-weight:700;margin-bottom:6px;display:block}.psub{font-size:9px;color:#888;margin-left:10px}'+
@@ -1744,20 +1746,20 @@ function handlePrintWeek(){
   h+='<span class="psub">'+dateStr+'</span></div>';
   h+='<table class="pw-week">';
   h+='<colgroup><col style="width:8%"><col style="width:17%"><col style="width:4%">';
-  DAY_LABELS.forEach(function(){ h+='<col style="width:3%"><col style="width:4%"><col style="width:4%">'; });
+  DAY_LABELS.forEach(function(){ h+='<col style="width:3%"><col style="width:4%"><col style="width:4%"><col style="width:4%">'; });
   h+='</colgroup><thead>';
 
   // Row 1: day spanning headers
   h+='<tr><th class="left" rowspan="2">Item No</th><th class="left" rowspan="2">Description</th><th rowspan="2">Group</th>';
   DAY_LABELS.forEach(function(day){
-    h+='<th colspan="3">'+day+'</th>';
+    h+='<th colspan="4">'+day+'</th>';
   });
   h+='</tr>';
 
   // Row 2: SOH / ORDER / BAKE sub-headers for each day
   h+='<tr>';
   DAY_LABELS.forEach(function(){
-    h+='<th class="day-start">SOH</th><th>Avg Sales</th><th>Bake/Order</th>';
+    h+='<th class="day-start">SOH</th><th>Avg Sales</th><th>Bake/Order</th><th>Daily Sales</th>';
   });
   h+='</tr>';
   h+='</thead><tbody>';
@@ -1765,7 +1767,7 @@ function handlePrintWeek(){
   groups.forEach(function(g){
     const ri_map=items.map(function(it,ri){return{it,ri};}).filter(function(x){return x.it.group===g;});
     if(g){
-      const totalCols=3+DAY_LABELS.length*3;
+      const totalCols=3+DAY_LABELS.length*4;
       h+='<tr class="p-grp"><td colspan="'+totalCols+'">'+escHtml(g)+'</td></tr>';
     }
     ri_map.forEach(function(obj){
@@ -1789,6 +1791,7 @@ function handlePrintWeek(){
         h+='<td class="day-start">'+sv+'</td>';
         h+='<td>'+(isHidden?'':effOrder||'—')+'</td>';
         h+='<td>'+(bake!==''?'<span class="'+bc+'">'+bake+'</span>':'')+'</td>';
+        h+='<td>'+(it.dailySales&&it.dailySales[di]!==undefined?escHtml(String(it.dailySales[di])):'')+'</td>';
       });;
       h+='</tr>';
     });
@@ -1929,7 +1932,7 @@ function printHistoryOrder(idx){
     if(di>0)h+='<div style="page-break-before:always"></div>';
     h+='<div class="ptitle">'+(snap.store?escHtml(snap.store)+' &mdash; ':'')+dayLabel+' Production Sheet';
     h+='<span class="psub">'+dateStr+'</span></div>';
-    h+='<table><thead><tr><th class="left">Item No</th><th class="left">Description</th><th>Group</th><th>SOH</th><th>Avg Sales</th><th>Bake/Order</th></tr></thead><tbody>';
+    h+='<table><thead><tr><th class="left">Item No</th><th class="left">Description</th><th>Group</th><th>SOH</th><th>Avg Sales</th><th>Bake/Order</th><th>Daily Sales</th></tr></thead><tbody>';
     const groups=[...new Set(snap.items.map(function(i){return i.group;}))];
     groups.forEach(function(g){
       if(g)h+='<tr class="p-grp"><td colspan="6">'+escHtml(g)+'</td></tr>';
